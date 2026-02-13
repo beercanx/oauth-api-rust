@@ -11,6 +11,20 @@ An exercise into how to create a HTTP service using Rust, similar to [oauth-api-
     * MSVC Build Tools for x86/x64 (latest)
     * Windows 11 SDK (10.0.22621.0)
 
+## Structure
+
+```
+├── src             # Application source code 
+│   ├── one
+│   │   └── ...etc
+│   ├── two
+│   │   └── ...etc
+│   └── main.rs     # Application entry point
+├── scripts
+│   └── http        # Jetbrains HTTP Client requests, with assertions.
+└── README.md
+```
+
 ## Building
 
 The standard Cargo (Rust build tool) approach
@@ -30,4 +44,11 @@ cargo test
 The standard Cargo (Rust build tool) approach
 ```bash
 cargo run
+```
+
+### Checking its running
+
+Hit the token exchange endpoint with a password grant _(yeah its deprecated; but it's a quick lazy way to start)_.
+```bash
+curl -vvv -X POST -H 'Content-Type: application/x-www-form-urlencoded' -u 'aardvark:badger' -d 'grant_type=password&scope=basic&username=aardvark&password=P%4055w0rd' http://127.0.0.1:8080/token
 ```

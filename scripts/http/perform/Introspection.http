@@ -21,7 +21,7 @@ token = {{access_token}}
 
     client.test(`response has application/json content type`, () => {
         const contentType = response.headers.valueOf('content-type');
-        client.assert(contentType == 'application/json; charset=utf-8', `Actual is ${contentType}`);
+        client.assert(contentType == 'application/json', `Actual is ${contentType}`);
     });
 
     const assertBodyHasField = (field, expected) => {

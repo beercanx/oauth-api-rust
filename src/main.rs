@@ -1,4 +1,7 @@
 mod graceful_shutdown;
+mod token_exchange;
+mod token;
+mod grant;
 
 use axum::{serve, Router};
 use std::io;
@@ -24,10 +27,10 @@ use tokio::net::TcpListener;
 #[tokio::main]
 async fn main() -> io::Result<()> {
 
-    let application = Router::new();
+    let application = Router::new().merge(token_exchange::route());
 
     // TODO - Extract into configuration
-    let tcp_listener = TcpListener::bind("127.0.0.1:0") // Change :0 to :8080 for a static port number
+    let tcp_listener = TcpListener::bind("127.0.0.1:8080") // Change :8080 to :0 for a random port number
         .await?;
 
     println!();
