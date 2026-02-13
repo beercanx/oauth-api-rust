@@ -1,0 +1,40 @@
+### Introspect access token
+
+< {%
+    request.variables.set('client_id', 'aardvark');
+    request.variables.set('client_secret', 'badger');
+%}
+
+// @no-redirect
+// @no-cookie-jar
+POST {{baseUrl}}/introspect
+Authorization: Basic {{client_id}} {{client_secret}}
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+token = {{access_token}}
+
+> {%
+    client.test(`response has 200 status`, () => {
+        client.assert(response.status === 200, `Actual is ${response.status}`);
+    });
+
+    client.test(`response has application/json content type`, () => {
+        const contentType = response.headers.valueOf('content-type');
+        client.assert(contentType == 'application/json; charset=utf-8', `Actual is ${contentType}`);
+    });
+
+    const assertBodyHasField = (field, expected) => {
+        client.test(`body has ${field} ${expected}`, () => {
+            client.assert(response.body.hasOwnProperty(field), `Cannot find '${field}' in body: ${JSON.stringify(response.body)}`);
+            client.assert(expected == response.body[field], `Expected [${expected}] but actual is [${JSON.stringify(response.body[field])}]`)
+        });
+    };
+
+    assertBodyHasField('active', true);
+    assertBodyHasField('scope', client.global.get('scope'));
+    assertBodyHasField('client_id', client.global.get('client_id'));
+    assertBodyHasField('username', client.global.get('username'));
+    assertBodyHasField('sub', client.global.get('username'));
+    assertBodyHasField('token_type', 'bearer');
+%}
