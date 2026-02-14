@@ -1,7 +1,7 @@
 use serde::Serialize;
 use crate::token::TokenType;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(untagged)]
 pub enum TokenExchangeResponse {
 
@@ -37,7 +37,6 @@ pub enum TokenExchangeResponse {
         #[serde(skip_serializing_if = "Option::is_none")]
         state: Option<String>,
     },
-
     Failure {
 
         // A single ASCII error code from the defined list.
@@ -45,11 +44,12 @@ pub enum TokenExchangeResponse {
 
         // Description Human-readable ASCII text providing additional information, used
         // to assist the client developer in understanding the error that occurred.
-        error_description: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        error_description: Option<String>,
     },
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorType {
 

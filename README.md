@@ -52,3 +52,11 @@ Hit the token exchange endpoint with a password grant _(yeah its deprecated; but
 ```bash
 curl -vvv -X POST -H 'Content-Type: application/x-www-form-urlencoded' -u 'aardvark:badger' -d 'grant_type=password&scope=basic&username=aardvark&password=P%4055w0rd' http://127.0.0.1:8080/token
 ```
+
+## Reading materials
+* https://docs.rs/axum/latest/axum/index.html
+* https://docs.rs/axum-extra/latest/axum_extra/index.html
+* https://docs.rs/axum/latest/axum/extract/index.html
+* https://docs.rs/axum/latest/axum/middleware/index.html
+* https://docs.rs/axum/latest/axum/error_handling/index.html
+* https://docs.rs/tower/latest/tower
