@@ -1,21 +1,18 @@
+use std::collections::HashMap;
 use axum::extract::{FromRequest, Request};
 use axum::extract::rejection::FormRejection;
 use axum::{Form, Json};
+use axum::http::status::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Deserialize;
+use crate::token_exchange::grant::{validate_password_grant, PasswordGrantRequest};
+use crate::token_exchange::request::TokenExchangeRequest::Password;
 use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "grant_type", rename_all = "snake_case")]
 pub enum TokenExchangeRequest {
     Password(PasswordGrantRequest),
-}
-
-#[derive(Deserialize, Debug)]
-pub struct PasswordGrantRequest {
-    pub username: String,
-    pub password: String,
-    pub scope: Option<String>,
 }
 
 pub struct TokenExchangeForm(pub TokenExchangeRequest);
@@ -29,23 +26,32 @@ where
     type Rejection = Response;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        Form::<TokenExchangeRequest>::from_request(req, state)
+        Form::<HashMap<String, String>>::from_request(req, state)
             .await
-            .map(|Form(value)| TokenExchangeForm(value))
             .map_err(|rejection| {
-
-                let body = TokenExchangeResponse::Failure {
-                    error: ErrorType::InvalidRequest,
-                    error_description: Some(rejection.body_text()),
-                };
-
-                // "Failed to deserialize form body: grant_type: unknown variant `aardvark`, expected `password`"
-                // TODO - Handle no such grant type
-                // UnsupportedGrantType
-
-                eprintln!("Form parsing failed: {rejection:?}");
-
-                (rejection.status(), Json(body)).into_response()
+                (rejection.status(), Json(TokenExchangeResponse::failure(
+                    ErrorType::InvalidRequest,
+                    rejection.body_text()
+                ))).into_response()
+            })
+            .and_then(|Form(request)| {
+                match request.get("grant_type") {
+                    Some(grant_type) if grant_type == "password" => Ok(TokenExchangeForm(
+                        Password(validate_password_grant(request)?)
+                    )),
+                    Some(grant_type) => Err(
+                        (StatusCode::BAD_REQUEST, Json(TokenExchangeResponse::failure(
+                            ErrorType::UnsupportedGrantType,
+                            format!("unsupported: {grant_type}"),
+                        ))).into_response()
+                    ),
+                    None => Err(
+                        (StatusCode::BAD_REQUEST, Json(TokenExchangeResponse::failure(
+                            ErrorType::InvalidRequest,
+                            "missing parameter: grant_type",
+                        ))).into_response()
+                    )
+                }
             })
     }
 }

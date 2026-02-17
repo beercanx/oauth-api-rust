@@ -17,7 +17,7 @@ async fn token_exchange_handler(TokenExchangeForm(request): TokenExchangeForm) -
 
     // TODO - Handle client principal
 
-    println!("Received token exchange request: {request:?}");
+    println!("token_exchange_handler: {request:?}");
 
     let result = match request {
         TokenExchangeRequest::Password(password_grant_request) => {

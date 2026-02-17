@@ -49,6 +49,15 @@ pub enum TokenExchangeResponse {
     },
 }
 
+impl TokenExchangeResponse {
+    pub fn failure(error: ErrorType, description: impl Into<String>) -> Self {
+        TokenExchangeResponse::Failure {
+            error,
+            error_description: Some(description.into()),
+        }
+    }
+}
+
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorType {

@@ -6,4 +6,7 @@ POST {{baseUrl}}/token
 Content-Type: application/x-www-form-urlencoded
 Accept: application/json
 
-grant_type = aardvark
+grant_type = password &
+username = aardvark &
+password = badger &
+scope = basic
