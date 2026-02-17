@@ -1,20 +1,29 @@
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::Router;
 use axum::routing::post;
 use axum::response::Json;
+use crate::token::{AccessToken, TokenRepository};
 use crate::token_exchange::grant::handle_password_grant;
 use crate::token_exchange::response::TokenExchangeResponse;
-use crate::token_exchange::request::{TokenExchangeForm, TokenExchangeRequest};
 use crate::token_exchange::response::ErrorType::UnsupportedGrantType;
+use crate::token_exchange::request::{TokenExchangeForm, TokenExchangeRequest};
 
 // https://www.rfc-editor.org/rfc/rfc6749#section-3.2
-pub fn route() -> Router {
+pub fn route<A: TokenRepository<AccessToken> + 'static>() -> Router<TokenExchangeState<A>> {
     Router::new()
         .route("/token", post(token_exchange_handler))
 }
 
-#[axum::debug_handler]
-async fn token_exchange_handler(TokenExchangeForm(request): TokenExchangeForm) -> (StatusCode, Json<TokenExchangeResponse>) {
+#[derive(Clone)]
+pub struct TokenExchangeState<A: TokenRepository<AccessToken>> {
+    pub access_token_repository: A,
+}
+
+async fn token_exchange_handler<A : TokenRepository<AccessToken>>(
+    State(state): State<TokenExchangeState<A>>,
+    TokenExchangeForm(request): TokenExchangeForm,
+) -> (StatusCode, Json<TokenExchangeResponse>) {
 
     // TODO - Handle client principal
 
@@ -26,7 +35,7 @@ async fn token_exchange_handler(TokenExchangeForm(request): TokenExchangeForm) -
             error_description: Some("unsupported grant type: authorization_code".into())
         },
         TokenExchangeRequest::Password(password_grant_request) => {
-            handle_password_grant(password_grant_request).await
+            handle_password_grant(state, password_grant_request).await
         },
     };
 

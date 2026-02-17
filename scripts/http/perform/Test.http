@@ -10,3 +10,13 @@ grant_type = password &
 username = aardvark &
 password = badger &
 scope = basic
+
+### Test 2
+
+// @no-redirect
+// @no-cookie-jar
+POST {{baseUrl}}/introspect
+Content-Type: application/x-www-form-urlencoded
+Accept: application/json
+
+token = 695215bc-d80d-4194-89de-3944b5babaf7

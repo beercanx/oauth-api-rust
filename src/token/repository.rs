@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-pub trait TokenRepository<T>: Send + Sync {
+pub trait TokenRepository<T>: Send + Sync + Clone {
     fn get_token(&self, id: Uuid) -> Option<T>;
     fn save_token(&self, token: &T);
 }

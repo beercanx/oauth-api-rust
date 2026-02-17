@@ -1,22 +1,23 @@
 use std::collections::HashMap;
 use axum::response::Response;
 use serde::Deserialize;
-use crate::token::{AccessToken, InMemoryTokenRepository, TokenRepository, TokenType};
+use crate::token::{AccessToken, TokenRepository, TokenType};
 use crate::token_exchange::response::{invalid_parameter, missing_parameter, TokenExchangeResponse};
+use crate::token_exchange::route::TokenExchangeState;
 
-pub async fn handle_password_grant(request: PasswordGrantRequest) -> TokenExchangeResponse {
-
+pub async fn handle_password_grant<A>(state: TokenExchangeState<A>, request: PasswordGrantRequest) -> TokenExchangeResponse
+where
+    A: TokenRepository<AccessToken>,
+{
     println!("handle_password_grant({request:?})");
 
-    // TODO - Implement it... and place the service/repository creation somewhere sensible.
-    let access_token_repository= InMemoryTokenRepository::<AccessToken>::new();
+    // TODO - Implement it...
 
     let access_token = AccessToken {
         id: uuid::Uuid::new_v4(),
     };
 
-    access_token_repository.save_token(&access_token);
-
+    state.access_token_repository.save_token(&access_token);
 
     TokenExchangeResponse::Success {
         access_token: access_token.id,
