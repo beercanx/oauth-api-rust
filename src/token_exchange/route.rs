@@ -10,9 +10,13 @@ use crate::token_exchange::response::ErrorType::UnsupportedGrantType;
 use crate::token_exchange::request::{TokenExchangeForm, TokenExchangeRequest};
 
 // https://www.rfc-editor.org/rfc/rfc6749#section-3.2
-pub fn route<A: TokenRepository<AccessToken> + 'static>() -> Router<TokenExchangeState<A>> {
+pub fn route<S, A>(state: TokenExchangeState<A>) -> Router<S>
+where
+    A: TokenRepository<AccessToken> + 'static
+{
     Router::new()
         .route("/token", post(token_exchange_handler))
+        .with_state(state)
 }
 
 #[derive(Clone)]
@@ -20,7 +24,7 @@ pub struct TokenExchangeState<A: TokenRepository<AccessToken>> {
     pub access_token_repository: A,
 }
 
-async fn token_exchange_handler<A : TokenRepository<AccessToken>>(
+async fn token_exchange_handler<A: TokenRepository<AccessToken>>(
     State(state): State<TokenExchangeState<A>>,
     TokenExchangeForm(request): TokenExchangeForm,
 ) -> (StatusCode, Json<TokenExchangeResponse>) {

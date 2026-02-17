@@ -7,6 +7,10 @@ mod token_introspection;
 use axum::{serve, Router};
 use std::io;
 use tokio::net::TcpListener;
+use token::InMemoryTokenRepository;
+use token_exchange::TokenExchangeState;
+use token_introspection::TokenIntrospectionState;
+use crate::token::AccessToken;
 
 // TODO List:
 //  - Token endpoint
@@ -28,17 +32,16 @@ use tokio::net::TcpListener;
 #[tokio::main]
 async fn main() -> io::Result<()> {
 
-    let access_token_repository = token::InMemoryTokenRepository::new();
+    // TODO - Do we bother with services, or just continue with passing the repositories directly?
+    let access_token_repository = InMemoryTokenRepository::<AccessToken>::new();
 
     let application = Router::new()
-        .merge(token_exchange::route())
-        .with_state(token_exchange::TokenExchangeState {
+        .merge(token_exchange::route(TokenExchangeState {
             access_token_repository: access_token_repository.clone(), // TODO - Review if this is safe and the right thing to do
-        })
-        .merge(token_introspection::route())
-        .with_state(token_introspection::TokenIntrospectionState {
+        }))
+        .merge(token_introspection::route(TokenIntrospectionState {
             access_token_repository: access_token_repository.clone(), // TODO - Review if this is safe and the right thing to do
-        });
+        }));
 
     // TODO - Extract into configuration
     let tcp_listener = TcpListener::bind("127.0.0.1:8080") // Change :8080 to :0 for a random port number

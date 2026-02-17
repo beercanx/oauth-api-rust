@@ -5,7 +5,10 @@ use crate::token::{AccessToken, TokenRepository, TokenType};
 use crate::token_exchange::response::{invalid_parameter, missing_parameter, TokenExchangeResponse};
 use crate::token_exchange::route::TokenExchangeState;
 
-pub async fn handle_password_grant<A>(state: TokenExchangeState<A>, request: PasswordGrantRequest) -> TokenExchangeResponse
+pub async fn handle_password_grant<A>(
+    state: TokenExchangeState<A>,
+    request: PasswordGrantRequest
+) -> TokenExchangeResponse
 where
     A: TokenRepository<AccessToken>,
 {

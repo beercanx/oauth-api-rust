@@ -4,11 +4,11 @@ use axum::extract::State;
 use axum::routing::post;
 use serde::Serialize;
 use crate::token::{AccessToken, TokenRepository};
-use crate::token_exchange::TokenExchangeState;
 
-pub fn route<A: TokenRepository<AccessToken> + 'static>() -> Router<TokenIntrospectionState<A>> {
+pub fn route<S, A: TokenRepository<AccessToken> + 'static>(state: TokenIntrospectionState<A>) -> Router<S> {
     Router::new()
         .route("/introspect", post(token_introspection_handler))
+        .with_state(state)
 }
 
 #[derive(Clone)]
@@ -16,7 +16,9 @@ pub struct TokenIntrospectionState<A: TokenRepository<AccessToken>> {
     pub access_token_repository: A,
 }
 
-async fn token_introspection_handler<A : TokenRepository<AccessToken>>(State(state): State<TokenIntrospectionState<A>>) -> (StatusCode, Json<TokenIntrospectionResponse>) {
+async fn token_introspection_handler<A : TokenRepository<AccessToken>>(
+    State(state): State<TokenIntrospectionState<A>>
+) -> (StatusCode, Json<TokenIntrospectionResponse>) {
 
     // TODO - Actually implement
 
