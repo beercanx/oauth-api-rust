@@ -27,7 +27,8 @@ use tokio::net::TcpListener;
 #[tokio::main]
 async fn main() -> io::Result<()> {
 
-    let application = Router::new().merge(token_exchange::route());
+    let application = Router::new()
+        .merge(token_exchange::route());
 
     // TODO - Extract into configuration
     let tcp_listener = TcpListener::bind("127.0.0.1:8080") // Change :8080 to :0 for a random port number

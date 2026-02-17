@@ -1,19 +1,25 @@
 use std::collections::HashMap;
-use axum::http::StatusCode;
-use axum::Json;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use serde::Deserialize;
-use crate::token::TokenType;
-use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
+use crate::token::{AccessToken, InMemoryTokenRepository, TokenRepository, TokenType};
+use crate::token_exchange::response::{invalid_parameter, missing_parameter, TokenExchangeResponse};
 
 pub async fn handle_password_grant(request: PasswordGrantRequest) -> TokenExchangeResponse {
 
     println!("handle_password_grant({request:?})");
 
-    // TODO - Implement it...
+    // TODO - Implement it... and place the service/repository creation somewhere sensible.
+    let access_token_repository= InMemoryTokenRepository::<AccessToken>::new();
+
+    let access_token = AccessToken {
+        id: uuid::Uuid::new_v4(),
+    };
+
+    access_token_repository.save_token(&access_token);
+
 
     TokenExchangeResponse::Success {
-        access_token: uuid::Uuid::new_v4(),
+        access_token: access_token.id,
         token_type: TokenType::Bearer,
         expires_in: 7200,
         refresh_token: Some(uuid::Uuid::new_v4()),
@@ -67,16 +73,4 @@ pub fn validate_password_grant(request: HashMap<String, String>) -> Result<Passw
         password: password.clone(),
         scope: scope.cloned(),
     })
-}
-
-fn missing_parameter(parameter: &str) -> Response {
-    as_response(ErrorType::InvalidRequest, format!("missing parameter: {parameter}"))
-}
-
-fn invalid_parameter(parameter: &str) -> Response {
-    as_response(ErrorType::InvalidRequest, format!("invalid parameter: {parameter}"))
-}
-
-fn as_response(error: ErrorType, description: impl Into<String>) -> Response {
-    (StatusCode::BAD_REQUEST, Json(TokenExchangeResponse::failure(error, description))).into_response()
 }

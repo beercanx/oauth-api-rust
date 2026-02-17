@@ -5,6 +5,7 @@ use axum::response::Json;
 use crate::token_exchange::grant::handle_password_grant;
 use crate::token_exchange::response::TokenExchangeResponse;
 use crate::token_exchange::request::{TokenExchangeForm, TokenExchangeRequest};
+use crate::token_exchange::response::ErrorType::UnsupportedGrantType;
 
 // https://www.rfc-editor.org/rfc/rfc6749#section-3.2
 pub fn route() -> Router {
@@ -20,6 +21,10 @@ async fn token_exchange_handler(TokenExchangeForm(request): TokenExchangeForm) -
     println!("token_exchange_handler: {request:?}");
 
     let result = match request {
+        TokenExchangeRequest::AuthorizationCode(_) => TokenExchangeResponse::Failure { // TODO - Implement
+            error: UnsupportedGrantType,
+            error_description: Some("unsupported grant type: authorization_code".into())
+        },
         TokenExchangeRequest::Password(password_grant_request) => {
             handle_password_grant(password_grant_request).await
         },

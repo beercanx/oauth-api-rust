@@ -1,27 +1,33 @@
-use uuid::Uuid;
+use crate::token::Token;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use uuid::Uuid;
 
-use crate::token::AccessToken;
-
-trait AccessTokenRepository: Send + Sync {
-    fn get_token(&self, id: Uuid) -> Option<AccessToken>;
-
-    fn save_token(&self, token: &AccessToken);
+pub trait TokenRepository<T>: Send + Sync {
+    fn get_token(&self, id: Uuid) -> Option<T>;
+    fn save_token(&self, token: &T);
 }
 
 #[derive(Debug, Clone, Default)]
-struct InMemoryAccessTokenRepository {
-    map: Arc<Mutex<HashMap<Uuid, AccessToken>>>,
+pub struct InMemoryTokenRepository<T> {
+    map: Arc<Mutex<HashMap<Uuid, T>>>,
 }
 
-impl AccessTokenRepository for InMemoryAccessTokenRepository {
+impl<T> InMemoryTokenRepository<T> {
+    pub fn new() -> Self {
+        Self { map: Arc::new(Mutex::new(HashMap::new())) }
+    }
+}
 
-    fn get_token(&self, id: Uuid) -> Option<AccessToken> {
+impl<T> TokenRepository<T> for InMemoryTokenRepository<T>
+where
+    T: Token + Clone + Send + Sync,
+{
+    fn get_token(&self, id: Uuid) -> Option<T> {
         self.map.lock().unwrap().get(&id).cloned()
     }
 
-    fn save_token(&self, token: &AccessToken) {
-        self.map.lock().unwrap().insert(token.id, token.clone());
+    fn save_token(&self, token: &T) {
+        self.map.lock().unwrap().insert(token.id(), token.clone());
     }
 }
