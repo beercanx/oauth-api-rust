@@ -18,14 +18,16 @@ An exercise into how to create a HTTP service using Rust, similar to [oauth-api-
 ## Structure
 
 ```
-├── src             # Application source code 
-│   ├── one
+├── src                     # Application source code
+│   ├── token               # Shared token logic 
 │   │   └── ...etc
-│   ├── two
+│   ├── token_exchange      # Token exchange endpoint
 │   │   └── ...etc
-│   └── main.rs     # Application entry point
+│   ├── token_introspection # Token introspection endpoint
+│   │   └── ...etc
+│   └── main.rs             # Application entry point
 ├── scripts
-│   └── http        # Jetbrains HTTP Client requests, with assertions.
+│   └── http                # Jetbrains HTTP Client requests, with assertions.
 └── README.md
 ```
 
