@@ -1,4 +1,8 @@
 # A Rust based OAuth API
+[![Rust](https://github.com/beercanx/oauth-api-rust/actions/workflows/rust.yml/badge.svg)](https://github.com/beercanx/oauth-api-rust/actions/workflows/rust.yml) 
+[![CodeQL](https://github.com/beercanx/oauth-api-rust/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/beercanx/oauth-api-rust/actions/workflows/github-code-scanning/codeql) 
+[![Dependabot Updates](https://github.com/beercanx/oauth-api-rust/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/beercanx/oauth-api-rust/actions/workflows/dependabot/dependabot-updates) 
+
 An exercise into how to create a HTTP service using Rust, similar to [oauth-api-go](https://github.com/beercanx/oauth-api-go) and [oauth-api](https://github.com/beercanx/oauth-api).
 
 ## Requirements
