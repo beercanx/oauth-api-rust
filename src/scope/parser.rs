@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::scope::Scope;
 use crate::scope::Scopes;
 
@@ -32,7 +33,7 @@ pub fn parse_scopes(maybe_space_delimited_scopes: Option<&String>) -> Result<Opt
                 .into_iter()
                 .filter(|scope| is_valid_scope(scope))
                 .map(Scope::from)
-                .collect::<Vec<Scope>>();
+                .collect::<HashSet<Scope>>();
 
             if scopes.len() != raw_scopes_count {
                 return Err("defined but invalid scope provided");

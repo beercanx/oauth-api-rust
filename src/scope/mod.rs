@@ -1,9 +1,10 @@
 mod parser;
 
+use std::collections::HashSet;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub use parser::*;
 
-#[derive(Eq, PartialEq)]
+#[derive(Hash, Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Scope {
     pub name: String,
@@ -11,7 +12,7 @@ pub struct Scope {
 
 #[derive(Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
-pub struct Scopes(pub Vec<Scope>);
+pub struct Scopes(pub HashSet<Scope>);
 
 impl Serialize for Scopes {
     // Serialize scopes as a space delimited list
