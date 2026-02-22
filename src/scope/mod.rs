@@ -4,7 +4,8 @@ use serde::{Deserialize, Deserializer};
 
 pub use parser::*;
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
 pub struct Scope {
     pub name: String,
 }

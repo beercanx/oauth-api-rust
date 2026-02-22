@@ -122,13 +122,13 @@ mod unit_tests {
 
     validate_err! {
         should_return_invalid_request_on_missing_username,
-        input_parameters! { "password" => "password", "scope" => "read write" },
+        input_parameters! { "password" => "<REDACTED>", "scope" => "read write" },
         expected_failure! { ErrorType::InvalidRequest, "missing parameter: username" }
     }
 
     validate_err! {
         should_return_invalid_request_on_blank_username,
-        input_parameters! { "username" => " ", "password" => "password", "scope" => "read write" },
+        input_parameters! { "username" => " ", "password" => "<REDACTED>", "scope" => "read write" },
         expected_failure! { ErrorType::InvalidRequest, "invalid parameter: username" }
     }
 
@@ -140,19 +140,19 @@ mod unit_tests {
 
     validate_err! {
         should_return_invalid_request_on_blank_scope,
-        input_parameters! { "username" => "aardvark", "password" => "badger", "scope" => " " },
+        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => " " },
         expected_failure! { ErrorType::InvalidRequest, "invalid parameter: scope" }
     }
 
     validate_err! {
         should_return_invalid_request_with_an_invalid_scope,
-        input_parameters! { "username" => "aardvark", "password" => "badger", "scope" => "cicada" },
+        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "cicada" },
         expected_failure! { ErrorType::InvalidRequest, "invalid parameter: scope" }
     }
 
     validate_err! {
         should_return_invalid_request_with_an_invalid_scope_and_a_valid_scope,
-        input_parameters! { "username" => "aardvark", "password" => "badger", "scope" => "basic cicada" },
+        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "basic cicada" },
         expected_failure! { ErrorType::InvalidRequest, "invalid parameter: scope" }
     }
 
@@ -160,30 +160,30 @@ mod unit_tests {
 
     validate_ok! {
         should_return_valid_request_if_only_scope_is_not_provided,
-        input_parameters! { "username" => "aardvark", "password" => "badger" },
+        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>" },
         PasswordGrantRequest {
             username: "aardvark".into(),
-            password: "badger".into(),
+            password: "<REDACTED>".into(),
             scopes: None,
         }
     }
 
     validate_ok! {
         should_return_valid_request_if_only_one_scope_is_provided,
-        input_parameters! { "username" => "aardvark", "password" => "badger", "scope" => "basic" },
+        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "basic" },
         PasswordGrantRequest {
             username: "aardvark".into(),
-            password: "badger".into(),
+            password: "<REDACTED>".into(),
             scopes: Some(Vec::from([Scope::from("basic")])),
         }
     }
 
     validate_ok! {
         should_return_valid_request_if_multiple_scopes_are_provided,
-        input_parameters! { "username" => "aardvark", "password" => "badger", "scope" => "basic read write" },
+        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "basic read write" },
         PasswordGrantRequest {
             username: "aardvark".into(),
-            password: "badger".into(),
+            password: "<REDACTED>".into(),
             scopes: Some(Vec::from(["basic", "read", "write"].map(Scope::from))),
         }
     }

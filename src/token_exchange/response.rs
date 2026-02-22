@@ -1,7 +1,8 @@
 use serde::Serialize;
 use crate::token::TokenType;
 
-#[derive(Serialize, Debug, Eq, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
+#[derive(Serialize, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum TokenExchangeResponse {
 
@@ -66,7 +67,8 @@ impl TokenExchangeResponse {
     }
 }
 
-#[derive(Serialize, Debug, Eq, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
+#[derive(Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorType {
 

@@ -9,14 +9,15 @@ pub trait Token {
     fn id(&self) -> Uuid;
 }
 
-#[derive(Serialize, Debug, Eq, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
+#[derive(Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum TokenType {
     // https://www.rfc-editor.org/rfc/rfc6750
     Bearer,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Clone)]
 pub struct AccessToken {
     pub id: Uuid
 }
