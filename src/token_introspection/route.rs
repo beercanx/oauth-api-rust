@@ -28,7 +28,7 @@ async fn token_introspection_handler<A : TokenRepository<AccessToken>>(
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize)]
 pub struct TokenIntrospectionResponse {
     pub active: bool,
 }

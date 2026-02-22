@@ -1,10 +1,9 @@
-use axum::http::StatusCode;
-use axum::Json;
-use axum::response::{IntoResponse, Response};
 use serde::Serialize;
+use crate::scope::Scopes;
 use crate::token::TokenType;
 
-#[derive(Serialize, Debug)]
+#[cfg_attr(test, derive(Debug))]
+#[derive(Serialize, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum TokenExchangeResponse {
 
@@ -33,7 +32,7 @@ pub enum TokenExchangeResponse {
         // REQUIRED. The scope of the access token as described by
         // https://www.rfc-editor.org/rfc/rfc6749#section-3.3
         #[serde(skip_serializing_if = "Option::is_none")]
-        scope: Option<String>,
+        scope: Option<Scopes>,
 
         // State REQUIRED if the "state" parameter was present in the client
         // authorization request. The exact value received from the client.
@@ -53,28 +52,24 @@ pub enum TokenExchangeResponse {
 }
 
 impl TokenExchangeResponse {
-    pub fn failure(error: ErrorType, description: impl Into<String>) -> Self {
+
+    pub fn missing_parameter(parameter: &str) -> Self {
         TokenExchangeResponse::Failure {
-            error,
-            error_description: Some(description.into()),
+            error: ErrorType::InvalidRequest,
+            error_description: Some(format!("missing parameter: {parameter}")),
+        }
+    }
+
+    pub fn invalid_parameter(parameter: &str) -> Self {
+        TokenExchangeResponse::Failure {
+            error: ErrorType::InvalidRequest,
+            error_description: Some(format!("invalid parameter: {parameter}")),
         }
     }
 }
 
-pub fn missing_parameter(parameter: &str) -> Response {
-    parameter_error_response(ErrorType::InvalidRequest, format!("missing parameter: {parameter}"))
-}
-
-pub fn invalid_parameter(parameter: &str) -> Response {
-    parameter_error_response(ErrorType::InvalidRequest, format!("invalid parameter: {parameter}"))
-}
-
-// TODO - Could do with a better name.
-pub fn parameter_error_response(error: ErrorType, description: impl Into<String>) -> Response {
-    (StatusCode::BAD_REQUEST, Json(TokenExchangeResponse::failure(error, description))).into_response()
-}
-
-#[derive(Serialize, Debug, Eq, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
+#[derive(Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorType {
 

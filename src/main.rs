@@ -1,8 +1,8 @@
-mod graceful_shutdown;
-mod token_exchange;
+mod scope;
 mod token;
-mod grant;
+mod token_exchange;
 mod token_introspection;
+mod graceful_shutdown;
 
 use axum::{serve, Router};
 use std::io;

@@ -8,7 +8,7 @@ pub trait TokenRepository<T>: Send + Sync + Clone {
     fn save_token(&self, token: &T);
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct InMemoryTokenRepository<T> {
     map: Arc<Mutex<HashMap<Uuid, T>>>,
 }
