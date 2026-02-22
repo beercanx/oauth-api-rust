@@ -65,6 +65,7 @@ mod integration_tests {
 
     const TOKEN_ENDPOINT: &str = "/token";
     const X_WWW_FORM_URLENCODED: &str = "application/x-www-form-urlencoded";
+    const TEST_CLIENT_PASSWORD: &'static str = "9VylF3DbEeJbtdbih3lqpNXBw@Non#bi";
 
     macro_rules! under_test {
         () => {
@@ -203,7 +204,7 @@ mod integration_tests {
             let request = Request::builder()
             .method(Method::POST)
             .uri(TOKEN_ENDPOINT)
-            .header(AUTHORIZATION, basic_auth("confidential-cicada", "9VylF3DbEeJbtdbih3lqpNXBw@Non#bi"))
+            .header(AUTHORIZATION, basic_auth("confidential-cicada", TEST_CLIENT_PASSWORD))
             .header(CONTENT_TYPE, X_WWW_FORM_URLENCODED)
             .body(Body::from("grant_type=password&username=aardvark&password=badger&scope=basic"))
             .unwrap();
@@ -228,7 +229,7 @@ mod integration_tests {
             let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
-                .header(AUTHORIZATION, basic_auth("confidential-cicada", "9VylF3DbEeJbtdbih3lqpNXBw@Non#bi"))
+                .header(AUTHORIZATION, basic_auth("confidential-cicada", TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, X_WWW_FORM_URLENCODED)
                 .body(Body::from(format!("grant_type=authorization_code&code={}&scope=basic&redirect_uri=https%3A%2F%2Fredirect.baconi.co.uk", uuid::Uuid::new_v4())))
                 .unwrap();
@@ -252,7 +253,7 @@ mod integration_tests {
             let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
-                .header(AUTHORIZATION, basic_auth("confidential-cicada", "9VylF3DbEeJbtdbih3lqpNXBw@Non#bi"))
+                .header(AUTHORIZATION, basic_auth("confidential-cicada", TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, X_WWW_FORM_URLENCODED)
                 .body(Body::from(format!("grant_type=refresh_token&refresh_token={}&scope=basic", uuid::Uuid::new_v4())))
                 .unwrap();
@@ -276,7 +277,7 @@ mod integration_tests {
             let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
-                .header(AUTHORIZATION, basic_auth("confidential-cicada", "9VylF3DbEeJbtdbih3lqpNXBw@Non#bi"))
+                .header(AUTHORIZATION, basic_auth("confidential-cicada", TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, X_WWW_FORM_URLENCODED)
                 .body(Body::from(format!("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion={}", uuid::Uuid::new_v4())))
                 .unwrap();
