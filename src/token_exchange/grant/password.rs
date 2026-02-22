@@ -75,6 +75,7 @@ mod unit_tests {
 
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/PasswordValidationTest.kt
 
+    use std::collections::HashSet;
     use super::*;
     use assertables::*;
     use crate::token_exchange::response::ErrorType;
@@ -151,6 +152,12 @@ mod unit_tests {
         expected_failure! { ErrorType::InvalidRequest, "invalid parameter: scope" }
     }
 
+    validate_err! {
+        should_return_invalid_request_with_an_duplicated_valid_scopes,
+        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "basic basic" },
+        expected_failure! { ErrorType::InvalidRequest, "invalid parameter: scope" }
+    }
+
     // TODO - should return invalid request on unauthorised scopes
 
     validate_ok! {
@@ -169,7 +176,7 @@ mod unit_tests {
         PasswordGrantRequest {
             username: "aardvark".into(),
             password: "<REDACTED>".into(),
-            scopes: Some(Scopes(Vec::from([Scope::from("basic")]))),
+            scopes: Some(Scopes(HashSet::from([Scope::from("basic")]))),
         }
     }
 
@@ -179,7 +186,7 @@ mod unit_tests {
         PasswordGrantRequest {
             username: "aardvark".into(),
             password: "<REDACTED>".into(),
-            scopes: Some(Scopes(Vec::from(["basic", "read", "write"].map(Scope::from)))),
+            scopes: Some(Scopes(HashSet::from(["basic", "read", "write"].map(Scope::from)))),
         }
     }
 }
