@@ -1,4 +1,5 @@
 use crate::scope::Scope;
+use crate::scope::Scopes;
 
 // TODO - Extract into config
 const VALID_SCOPES: [&str; 3] = ["basic", "read", "write"];
@@ -6,7 +7,7 @@ fn is_valid_scope(scope: &str) -> bool {
     VALID_SCOPES.contains(&scope)
 }
 
-pub fn parse_scopes(maybe_space_delimited_scopes: Option<&String>) -> Result<Option<Vec<Scope>>, &str> {
+pub fn parse_scopes(maybe_space_delimited_scopes: Option<&String>) -> Result<Option<Scopes>, &str> {
     match maybe_space_delimited_scopes {
         Some(space_delimited_scopes) => {
 
@@ -37,7 +38,7 @@ pub fn parse_scopes(maybe_space_delimited_scopes: Option<&String>) -> Result<Opt
                 return Err("defined but invalid scope provided");
             }
 
-            Ok(Some(scopes))
+            Ok(Some(Scopes(scopes)))
         },
         None => Ok(None)
     }

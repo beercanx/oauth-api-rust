@@ -1,4 +1,5 @@
 use serde::Serialize;
+use crate::scope::Scopes;
 use crate::token::TokenType;
 
 #[cfg_attr(test, derive(Debug))]
@@ -31,7 +32,7 @@ pub enum TokenExchangeResponse {
         // REQUIRED. The scope of the access token as described by
         // https://www.rfc-editor.org/rfc/rfc6749#section-3.3
         #[serde(skip_serializing_if = "Option::is_none")]
-        scope: Option<String>,
+        scope: Option<Scopes>,
 
         // State REQUIRED if the "state" parameter was present in the client
         // authorization request. The exact value received from the client.

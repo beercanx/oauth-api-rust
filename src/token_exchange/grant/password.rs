@@ -3,14 +3,14 @@ use serde::Deserialize;
 use crate::token::{AccessToken, TokenRepository, TokenType};
 use crate::token_exchange::response::{TokenExchangeResponse};
 use crate::token_exchange::route::TokenExchangeState;
-use crate::scope::{parse_scopes, Scope};
+use crate::scope::{parse_scopes, Scope, Scopes};
 
 #[derive(Deserialize, Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 pub struct PasswordGrantRequest {
     pub username: String,
     pub password: String,
-    pub scopes: Option<Vec<Scope>>,
+    pub scopes: Option<Scopes>,
 }
 
 pub async fn handle_password_grant<A>(
@@ -34,12 +34,7 @@ where
         token_type: TokenType::Bearer,
         expires_in: 7200,
         refresh_token: Some(uuid::Uuid::new_v4()),
-        scope: request.scopes.map(|scopes| scopes // TODO - Update `Success` with Option<Vec<Scope>> with space delimited string serialisation
-            .into_iter()
-            .map(|scope| scope.name)
-            .collect::<Vec<String>>()
-            .join(" ")
-        ),
+        scope: request.scopes,
         state: None,
     }
 }
@@ -174,7 +169,7 @@ mod unit_tests {
         PasswordGrantRequest {
             username: "aardvark".into(),
             password: "<REDACTED>".into(),
-            scopes: Some(Vec::from([Scope::from("basic")])),
+            scopes: Some(Scopes(Vec::from([Scope::from("basic")]))),
         }
     }
 
@@ -184,7 +179,7 @@ mod unit_tests {
         PasswordGrantRequest {
             username: "aardvark".into(),
             password: "<REDACTED>".into(),
-            scopes: Some(Vec::from(["basic", "read", "write"].map(Scope::from))),
+            scopes: Some(Scopes(Vec::from(["basic", "read", "write"].map(Scope::from)))),
         }
     }
 }
