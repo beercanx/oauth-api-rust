@@ -1,10 +1,7 @@
-use axum::http::StatusCode;
-use axum::Json;
-use axum::response::{IntoResponse, Response};
 use serde::Serialize;
 use crate::token::TokenType;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum TokenExchangeResponse {
 
@@ -53,25 +50,20 @@ pub enum TokenExchangeResponse {
 }
 
 impl TokenExchangeResponse {
-    pub fn failure(error: ErrorType, description: impl Into<String>) -> Self {
+
+    pub fn missing_parameter(parameter: &str) -> Self {
         TokenExchangeResponse::Failure {
-            error,
-            error_description: Some(description.into()),
+            error: ErrorType::InvalidRequest,
+            error_description: Some(format!("missing parameter: {parameter}")),
         }
     }
-}
 
-pub fn missing_parameter(parameter: &str) -> Response {
-    parameter_error_response(ErrorType::InvalidRequest, format!("missing parameter: {parameter}"))
-}
-
-pub fn invalid_parameter(parameter: &str) -> Response {
-    parameter_error_response(ErrorType::InvalidRequest, format!("invalid parameter: {parameter}"))
-}
-
-// TODO - Could do with a better name.
-pub fn parameter_error_response(error: ErrorType, description: impl Into<String>) -> Response {
-    (StatusCode::BAD_REQUEST, Json(TokenExchangeResponse::failure(error, description))).into_response()
+    pub fn invalid_parameter(parameter: &str) -> Self {
+        TokenExchangeResponse::Failure {
+            error: ErrorType::InvalidRequest,
+            error_description: Some(format!("invalid parameter: {parameter}")),
+        }
+    }
 }
 
 #[derive(Serialize, Debug, Eq, PartialEq)]

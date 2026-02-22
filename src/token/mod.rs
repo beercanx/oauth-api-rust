@@ -9,7 +9,7 @@ pub trait Token {
     fn id(&self) -> Uuid;
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum TokenType {
     // https://www.rfc-editor.org/rfc/rfc6750

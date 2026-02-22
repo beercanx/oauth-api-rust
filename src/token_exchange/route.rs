@@ -31,8 +31,6 @@ async fn token_exchange_handler<A: TokenRepository<AccessToken>>(
 
     // TODO - Handle client principal
 
-    println!("token_exchange_handler: {request:?}");
-
     let result = match request {
         TokenExchangeRequest::AuthorizationCode(_) => TokenExchangeResponse::Failure { // TODO - Implement
             error: UnsupportedGrantType,
@@ -49,4 +47,24 @@ async fn token_exchange_handler<A: TokenRepository<AccessToken>>(
     };
 
     (status, Json(result))
+}
+
+#[cfg(test)]
+mod integration_tests {
+
+    // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/TokenRouteIntegrationTests.kt
+
+    // TODO - InvalidHttpRequest
+    //          - should only support post requests
+    //          - should require client authentication
+    //          - should only support url encoded form requests
+
+    // TODO - InvalidTokenRequest
+    //          - should return bad request for invalid token exchange requests
+
+    // TODO - SuccessTokenRequest
+    //          - should return ok for valid password grants
+    //          - should return ok for valid authorisation code grants
+    //          - should return ok for valid refresh token grants
+    //          - should return ok for valid assertion grants
 }
