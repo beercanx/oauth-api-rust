@@ -1,6 +1,4 @@
-mod repository;
-
-pub use repository::*;
+pub mod repository;
 
 use serde::Serialize;
 use uuid::Uuid;

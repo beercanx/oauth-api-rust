@@ -48,7 +48,7 @@ pub enum TokenExchangeResponse {
         // to assist the client developer in understanding the error that occurred.
         #[serde(skip_serializing_if = "Option::is_none")]
         error_description: Option<String>,
-    },
+    }
 }
 
 impl TokenExchangeResponse {

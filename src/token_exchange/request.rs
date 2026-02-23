@@ -5,15 +5,15 @@ use axum::{Form, Json};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Deserialize;
-use crate::token_exchange::grant::{validate_password_grant, AuthorizationCodeGrantRequest, PasswordGrantRequest};
-use crate::token_exchange::request::TokenExchangeRequest::{AuthorizationCode, Password};
+use crate::client::{ClientPrincipal, GrantType};
+use crate::token_exchange::grant::password::{validate_password_grant, PasswordGrantRequest};
+use crate::token_exchange::request::TokenExchangeRequest::Password;
 use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
 
 #[derive(Deserialize, Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
 #[serde(tag = "grant_type", rename_all = "snake_case")]
 pub enum TokenExchangeRequest {
-    AuthorizationCode(AuthorizationCodeGrantRequest),
     Password(PasswordGrantRequest),
 }
 
@@ -30,9 +30,18 @@ where
     type Rejection = Response;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
+
+        let principal = req.extensions()
+            .get::<ClientPrincipal>()
+            .cloned()
+            .ok_or_else(|| handle_validation_failure(TokenExchangeResponse::Failure {
+                error: ErrorType::InvalidRequest,
+                error_description: Some("missing client authentication".into()),
+            }))?;
+
         match Form::<HashMap<String, String>>::from_request(req, state).await {
             Err(rejection) => Err(handle_form_rejection(rejection)),
-            Ok(Form(request)) => match validate_grant_type(request) {
+            Ok(Form(request)) => match validate_grant_type(principal, request) {
                 Err(failure) => Err(handle_validation_failure(failure)),
                 Ok(valid) => Ok(valid),
             }
@@ -40,33 +49,28 @@ where
     }
 }
 
-fn validate_grant_type(request: HashMap<String, String>) -> Result<TokenExchangeForm, TokenExchangeResponse> {
-    match request.get("grant_type") {
+pub fn validate_grant_type(principal: ClientPrincipal, request: HashMap<String, String>) -> Result<TokenExchangeForm, TokenExchangeResponse> {
+    match request.get("grant_type").map(|s| s.parse::<GrantType>()) {
 
-        Some(grant_type) if grant_type == "password" => Ok(TokenExchangeForm(
-            Password(validate_password_grant(request)?)
-        )),
+        None => Err(TokenExchangeResponse::missing_parameter("grant_type")),
 
-        Some(grant_type) if grant_type == "authorization_code" => Ok(TokenExchangeForm(
-            AuthorizationCode(AuthorizationCodeGrantRequest { // TODO - Implement real validation
-                code: request.get("code").unwrap().into(),
-                redirect_uri: request.get("redirect_uri").unwrap().into(),
-                code_verifier: request.get("code_verifier").map(|v| v.into()),
-            })
-        )),
-
-        Some(grant_type) if grant_type.trim().is_empty() => Err(
-            TokenExchangeResponse::invalid_parameter("grant_type")
-        ),
-
-        Some(grant_type) => Err(
+        Some(Err(error_message)) => Err(
             TokenExchangeResponse::Failure {
                 error: ErrorType::UnsupportedGrantType,
-                error_description: Some(format!("unsupported: {grant_type}")),
+                error_description: Some(error_message),
             }
         ),
 
-        None => Err(TokenExchangeResponse::missing_parameter("grant_type")),
+        Some(Ok(grant_type)) if !principal.can_perform_grant_type(&grant_type) => Err(
+            TokenExchangeResponse::Failure {
+                error: ErrorType::UnauthorizedClient,
+                error_description: Some(format!("not authorized to: {:?}", grant_type)),
+            }
+        ),
+
+        Some(Ok(GrantType::Password)) => Ok(TokenExchangeForm(
+            Password(validate_password_grant(principal, request)?)
+        )),
     }
 }
 
@@ -88,6 +92,8 @@ mod unit_tests {
 
     use super::*;
     use assertables::*;
+    use crate::client::ClientType;
+    use crate::client::configuration::ClientConfiguration;
     use crate::token_exchange::request::validate_grant_type;
 
     macro_rules! input_parameters {
@@ -97,37 +103,43 @@ mod unit_tests {
     }
 
     macro_rules! validate_err  {
-        ($name:ident, $request:expr, $expected:expr) => {
+        ($name:ident, $principal:expr, $request:expr, $expected:expr) => {
             #[test]
             fn $name() {
-                assert_eq!(assert_err!(validate_grant_type($request)), $expected);
+                assert_eq!(assert_err!(validate_grant_type($principal, $request)), $expected);
             }
         }
     }
 
     macro_rules! validate_ok  {
-        ($name:ident, $request:expr, $expected:expr) => {
+        ($name:ident, $principal:expr, $request:expr, $expected:expr) => {
             #[test]
             fn $name() {
-                assert_eq!(assert_ok!(validate_grant_type($request)), $expected);
+                assert_eq!(assert_ok!(validate_grant_type($principal, $request)), $expected);
             }
         }
     }
 
     validate_err! {
         should_return_invalid_request_on_missing_grant_type,
+        ClientPrincipal::new_confidential_principal("aardvark"),
         input_parameters! {},
         TokenExchangeResponse::missing_parameter("grant_type")
     }
 
     validate_err! {
         should_return_invalid_request_on_blank_grant_type,
+        ClientPrincipal::new_confidential_principal("aardvark"),
         input_parameters! { "grant_type" => " " },
-        TokenExchangeResponse::invalid_parameter("grant_type")
+        TokenExchangeResponse::Failure {
+            error: ErrorType::UnsupportedGrantType,
+            error_description: Some("unsupported:  ".into())
+        }
     }
 
     validate_err! {
         should_return_invalid_request_on_unsupported_grant_type,
+        ClientPrincipal::new_confidential_principal("aardvark"),
         input_parameters! { "grant_type" => "aardvark" },
         TokenExchangeResponse::Failure {
             error: ErrorType::UnsupportedGrantType,
@@ -135,37 +147,47 @@ mod unit_tests {
         }
     }
 
-    // TODO - should return invalid request on client unauthorised to use grant type
-    // validate_err! {
-    //     should_return_invalid_request_on_unauthorised_grant_type,
-    //     input_parameters! { "grant_type" => "password" },
-    //     TokenExchangeResponse::Failure {
-    //         error: ErrorType::UnauthorizedClient,
-    //         error_description: Some("not authorized to: password".into())
-    //     }
-    // }
+    validate_err! {
+        should_return_invalid_request_on_unauthorised_grant_type,
+        ClientPrincipal::new_principal(ClientConfiguration {
+            client_id: String::from("invalid").into(),
+            client_type: ClientType::Confidential,
+            redirect_uris: Default::default(),
+            allowed_scopes: Default::default(),
+            allowed_actions: Default::default(),
+            allowed_grant_types: Default::default(),
+        }),
+        input_parameters! { "grant_type" => "password" },
+        TokenExchangeResponse::Failure {
+            error: ErrorType::UnauthorizedClient,
+            error_description: Some("not authorized to: Password".into())
+        }
+    }
 
     validate_ok! {
         should_return_valid_request_for_password_grant_type,
+        ClientPrincipal::new_confidential_principal("aardvark"),
         input_parameters! { "grant_type" => "password", "username" => "aardvark", "password" => "" },
         TokenExchangeForm(Password(PasswordGrantRequest {
+            principal: ClientPrincipal::new_confidential_client("aardvark"),
             username: "aardvark".into(),
             password: "".into(),
             scopes: None,
         }))
     }
 
-    validate_ok! {
-        should_return_valid_request_for_authorization_code_grant_type,
-        input_parameters! {
-            "grant_type" => "authorization_code",
-            "code" => "1234567890",
-            "redirect_uri" => "https://example.com/callback"
-        },
-        TokenExchangeForm(AuthorizationCode(AuthorizationCodeGrantRequest {
-            code: "1234567890".into(),
-            redirect_uri: "https://example.com/callback".into(),
-            code_verifier: None,
-        }))
-    }
+    // TODO - Re-enable once authorization code grant type is implemented
+    // validate_ok! {
+    //     should_return_valid_request_for_authorization_code_grant_type,
+    //     input_parameters! {
+    //         "grant_type" => "authorization_code",
+    //         "code" => "1234567890",
+    //         "redirect_uri" => "https://example.com/callback"
+    //     },
+    //     TokenExchangeForm(AuthorizationCode(AuthorizationCodeGrantRequest {
+    //         code: "1234567890".into(),
+    //         redirect_uri: "https://example.com/callback".into(),
+    //         code_verifier: None,
+    //     }))
+    // }
 }
