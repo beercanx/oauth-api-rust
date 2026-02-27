@@ -1,5 +1,2 @@
-mod authorization_code;
-mod password;
-
-pub use authorization_code::*;
-pub use password::*;
+pub mod authorization_code;
+pub mod password;

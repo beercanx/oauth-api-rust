@@ -1,16 +1,23 @@
+#![forbid(unsafe_code)]
+
 mod scope;
 mod token;
 mod token_exchange;
 mod token_introspection;
 mod graceful_shutdown;
+mod client;
+mod util;
 
 use axum::{serve, Router};
 use std::io;
 use tokio::net::TcpListener;
-use token::InMemoryTokenRepository;
+use client::authentication::ClientAuthenticationService;
+use client::configuration::InMemoryClientConfigurationRepository;
+use client::secret::InMemoryClientSecretRepository;
+use token::AccessToken;
+use token::repository::InMemoryTokenRepository;
 use token_exchange::TokenExchangeState;
 use token_introspection::TokenIntrospectionState;
-use crate::token::AccessToken;
 
 // TODO List:
 //  - Token endpoint
@@ -34,13 +41,22 @@ async fn main() -> io::Result<()> {
 
     // TODO - Do we bother with services, or just continue with passing the repositories directly?
     let access_token_repository = InMemoryTokenRepository::<AccessToken>::new();
+    let client_secret_repository = InMemoryClientSecretRepository::new();
+    let client_configuration_repository = InMemoryClientConfigurationRepository::new();
 
+    let client_authenticator = ClientAuthenticationService::new(
+        client_secret_repository.clone(),
+        client_configuration_repository.clone(),
+    );
+    
     let application = Router::new()
         .merge(token_exchange::route(TokenExchangeState {
-            access_token_repository: access_token_repository.clone(), // TODO - Review if this is safe and the right thing to do
+            access_token_repository: access_token_repository.clone(),
+            client_authenticator: client_authenticator.clone(),
         }))
         .merge(token_introspection::route(TokenIntrospectionState {
-            access_token_repository: access_token_repository.clone(), // TODO - Review if this is safe and the right thing to do
+            access_token_repository: access_token_repository.clone(),
+            client_authenticator: client_authenticator.clone(),
         }));
 
     // TODO - Extract into configuration

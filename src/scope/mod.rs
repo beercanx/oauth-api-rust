@@ -1,12 +1,12 @@
-mod parser;
+pub mod parser;
 
 use std::collections::HashSet;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-pub use parser::*;
+use serde::{Serialize, Serializer};
+use crate::disable_deserialization;
 
-#[derive(Hash, Eq, PartialEq)]
+#[derive(Hash, Eq, PartialEq, Clone)]
 #[cfg_attr(test, derive(Debug))]
-pub struct Scope {
+pub struct Scope { // TODO - Rework into value_struct! ???
     pub name: String,
 }
 
@@ -26,17 +26,8 @@ impl Serialize for Scopes {
 }
 
 // To enable us to trust Scope is valid, we don't allow direct deserialization of Scope.
-impl<'de> Deserialize<'de> for Scope {
-    fn deserialize< D: Deserializer<'de>>(_: D) -> Result<Self, D::Error> {
-        Err(serde::de::Error::custom("Scope deserialization not supported"))
-    }
-}
-
-impl<'de> Deserialize<'de> for Scopes {
-    fn deserialize< D: Deserializer<'de>>(_: D) -> Result<Self, D::Error> {
-        Err(serde::de::Error::custom("Scopes deserialization not supported"))
-    }
-}
+disable_deserialization!(Scope);
+disable_deserialization!(Scopes);
 
 impl From<String> for Scope {
     fn from(name: String) -> Self {
