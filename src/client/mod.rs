@@ -7,6 +7,7 @@ pub mod middleware;
 
 use crate::value_struct;
 use crate::disable_deserialization;
+use crate::enum_with_from_str;
 
 value_struct! {
     pub struct ClientId(String);
@@ -29,21 +30,12 @@ pub enum ClientAction {
     // ProofKeyForCodeExchange,
 }
 
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub enum GrantType {
-    // AuthorizationCode,
-    Password,
-}
-
-// TODO - Convert enum into macro to help enforce valid from string conversion
-impl std::str::FromStr for GrantType {
-    type Err = String;
-    fn from_str(value: &str) -> Result<Self, Self::Err> {
-        match value {
-            // "authorization_code" => Ok(GrantType::AuthorizationCode),
-            "password" => Ok(GrantType::Password),
-            _ => Err(format!("unsupported: {value}")),
-        }
+enum_with_from_str! {
+    #[derive(Debug, Hash, Eq, PartialEq, Clone)]
+    pub enum GrantType {
+        // AuthorizationCode: "authorization_code",
+        Password: "password",
+        // RefreshToken: "refresh_token",
     }
 }
 
