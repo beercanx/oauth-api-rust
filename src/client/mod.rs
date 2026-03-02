@@ -85,7 +85,7 @@ pub mod test_support {
                 client_id: ClientId(client_id.into()),
                 client_type,
                 redirect_uris: Default::default(),
-                allowed_scopes: HashSet::from([Scope::from("basic"), Scope::from("read"), Scope::from("write")]),
+                allowed_scopes: HashSet::from([Scope::Basic, Scope::Read, Scope::Write]),
                 allowed_actions: Default::default(),
                 allowed_grant_types: HashSet::from([GrantType::Password]),
             }

@@ -2,12 +2,6 @@ use std::collections::HashSet;
 use crate::scope::Scope;
 use crate::scope::Scopes;
 
-// TODO - Extract into config
-const VALID_SCOPES: [&str; 3] = ["basic", "read", "write"];
-fn is_valid_scope(scope: &str) -> bool {
-    VALID_SCOPES.contains(&scope)
-}
-
 pub fn parse_scopes(maybe_space_delimited_scopes: Option<&String>) -> Result<Option<Scopes>, &str> {
     match maybe_space_delimited_scopes {
         Some(space_delimited_scopes) => {
@@ -31,8 +25,9 @@ pub fn parse_scopes(maybe_space_delimited_scopes: Option<&String>) -> Result<Opt
 
             let scopes = raw_scopes
                 .into_iter()
-                .filter(|scope| is_valid_scope(scope))
-                .map(Scope::from)
+                .map(|scope| scope.parse::<Scope>())
+                .filter(|scope| scope.is_ok())
+                .map(|scope| scope.unwrap())
                 .collect::<HashSet<Scope>>();
 
             if scopes.len() != raw_scopes_count {

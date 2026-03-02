@@ -34,7 +34,7 @@ impl InMemoryClientConfigurationRepository {
                     client_id: ClientId(String::from("aardvark")),
                     client_type: ClientType::Confidential,
                     redirect_uris: HashSet::from([]),
-                    allowed_scopes: HashSet::from([Scope::from("basic")]),
+                    allowed_scopes: HashSet::from([Scope::Basic]),
                     allowed_actions: HashSet::from([ClientAction::Introspect]),
                     allowed_grant_types: HashSet::from([GrantType::Password]),
                 }),
@@ -42,7 +42,7 @@ impl InMemoryClientConfigurationRepository {
                     client_id: ClientId(String::from("badger")),
                     client_type: ClientType::Public,
                     redirect_uris: HashSet::from([]),
-                    allowed_scopes: HashSet::from([Scope::from("basic")]),
+                    allowed_scopes: HashSet::from([Scope::Basic]),
                     allowed_actions: HashSet::from([]),
                     allowed_grant_types: HashSet::from([]),
                 })

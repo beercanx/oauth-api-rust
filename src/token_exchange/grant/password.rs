@@ -190,8 +190,7 @@ mod unit_tests {
             client_id: String::from("aardvark").into(),
             client_type: ClientType::Confidential,
             redirect_uris: Default::default(),
-            // See: src/scope/parser.rs -> is_valid_scope() for hard wired valid scopes
-            allowed_scopes: HashSet::from([Scope::from("invalid")]),
+            allowed_scopes: Default::default(),
             allowed_actions: Default::default(),
             allowed_grant_types: HashSet::from([Password]),
         }),
@@ -219,7 +218,7 @@ mod unit_tests {
             client_id: String::from("aardvark").into(),
             client_type: ClientType::Confidential,
             redirect_uris: Default::default(),
-            allowed_scopes: HashSet::from([Scope::from("read")]),
+            allowed_scopes: HashSet::from([Scope::Read]),
             allowed_actions: Default::default(),
             allowed_grant_types: HashSet::from([Password]),
         }),
@@ -247,7 +246,7 @@ mod unit_tests {
             principal: ClientPrincipal::new_confidential_client("aardvark"),
             username: "aardvark".into(),
             password: "<REDACTED>".into(),
-            scopes: Some(Scopes(HashSet::from([Scope::from("basic")]))),
+            scopes: Some(Scopes(HashSet::from([Scope::Basic]))),
         }
     }
 
@@ -259,7 +258,7 @@ mod unit_tests {
             principal: ClientPrincipal::new_confidential_client("aardvark"),
             username: "aardvark".into(),
             password: "<REDACTED>".into(),
-            scopes: Some(Scopes(HashSet::from(["basic", "read", "write"].map(Scope::from)))),
+            scopes: Some(Scopes(HashSet::from([Scope::Basic, Scope::Read, Scope::Write]))),
         }
     }
 }
