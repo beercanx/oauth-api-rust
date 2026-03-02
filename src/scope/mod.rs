@@ -6,7 +6,7 @@ use crate::disable_deserialization;
 
 #[derive(Hash, Eq, PartialEq, Clone)]
 #[cfg_attr(test, derive(Debug))]
-pub struct Scope { // TODO - Rework into value_struct! ???
+pub struct Scope { // TODO - Rework into value_struct! or enum_with_from_str! ??
     pub name: String,
 }
 
