@@ -3,11 +3,16 @@ pub mod parser;
 use std::collections::HashSet;
 use serde::{Serialize, Serializer};
 use crate::disable_deserialization;
+use crate::enum_with_from_str;
 
-#[derive(Hash, Eq, PartialEq, Clone)]
-#[cfg_attr(test, derive(Debug))]
-pub struct Scope { // TODO - Rework into value_struct! or enum_with_from_str! ??
-    pub name: String,
+enum_with_from_str! {
+    #[derive(Hash, Eq, PartialEq, Clone)]
+    #[cfg_attr(test, derive(Debug))]
+    pub enum Scope {
+        Basic: "basic",
+        Read: "read",
+        Write: "write",
+    }
 }
 
 #[derive(Eq, PartialEq)]
@@ -18,7 +23,7 @@ impl Serialize for Scopes {
     // Serialize scopes as a space delimited list
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.0.iter()
-            .map(|scope| scope.name.clone())
+            .map(|scope| scope.to_string())
             .collect::<Vec<String>>()
             .join(" ")
             .serialize(serializer)
@@ -28,21 +33,3 @@ impl Serialize for Scopes {
 // To enable us to trust Scope is valid, we don't allow direct deserialization of Scope.
 disable_deserialization!(Scope);
 disable_deserialization!(Scopes);
-
-impl From<String> for Scope {
-    fn from(name: String) -> Self {
-        Scope { name }
-    }
-}
-
-impl From<&str> for Scope {
-    fn from(name: &str) -> Self {
-        Scope { name: name.into() }
-    }
-}
-
-impl From<&String> for Scope {
-    fn from(name: &String) -> Self {
-        Scope { name: name.clone() }
-    }
-}
