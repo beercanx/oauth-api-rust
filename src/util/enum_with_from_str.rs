@@ -2,13 +2,13 @@
 macro_rules! enum_with_from_str {
     (
         $(#[$m:meta])*
-        pub enum $enum_name:ident {
+        $vis:vis enum $enum_name:ident {
             $($enum_value:ident: $enum_string_value:expr),+
             $(,)?
         }
     ) => {
         $(#[$m])*
-        pub enum $enum_name {
+        $vis enum $enum_name {
             $($enum_value),+
         }
         impl std::str::FromStr for $enum_name {
