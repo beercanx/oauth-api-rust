@@ -101,164 +101,291 @@ mod unit_tests {
     use crate::client::configuration::ClientConfiguration;
     use crate::scope::Scope;
     use crate::token_exchange::response::ErrorType;
+    use crate::map_of;
 
-    macro_rules! input_parameters {
-        ($($k:expr => $v:expr),* $(,)?) => {{
-            core::convert::From::from([$(($k.into(), $v.into()),)*])
-        }};
-    }
+    mod client {
+        use super::*;
 
-    macro_rules! expected_failure {
-        ($error:expr, $error_description:expr) => {{
-            TokenExchangeResponse::Failure {
-                error: $error,
-                error_description: Some($error_description.into()),
-            }
-        }};
-    }
-    
-    macro_rules! validate_err {
-        ($name:ident, $principal:expr, $request:expr, $expected:expr) => {
-            #[test]
-            fn $name() {
-                assert_eq!(assert_err!(validate_password_grant($principal, $request)), $expected);
-            }
+        #[test]
+        fn should_return_invalid_request_for_a_public_client() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_public_principal("aardvark"),
+                map_of! {
+                    "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                    "scope" => "read write",
+                },
+            );
+
+            let response = assert_err!(result);
+
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::UnauthorizedClient,
+                error_description: Some("not authorized to: Password".into())
+            });
+        }
+
+        #[test]
+        fn should_return_invalid_request_for_an_unauthorised_client() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_principal(ClientConfiguration {
+                    client_id: String::from("unauthorised").into(),
+                    client_type: ClientType::Confidential,
+                    redirect_uris: Default::default(),
+                    allowed_scopes: Default::default(),
+                    allowed_actions: Default::default(),
+                    allowed_grant_types: Default::default(),
+                }),
+                map_of! {
+                    "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                    "scope" => "read write",
+                },
+            );
+
+            let response = assert_err!(result);
+
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::UnauthorizedClient,
+                error_description: Some("not authorized to: Password".into())
+            });
+        }
+
+        #[test]
+        fn should_return_invalid_request_on_missing_username() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_confidential_principal("aardvark"),
+                map_of! {
+                    "password" => "<REDACTED>",
+                    "scope" => "read write",
+                },
+            );
+
+            let response = assert_err!(result);
+
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::InvalidRequest,
+                error_description: Some("missing parameter: username".into()),
+            });
         }
     }
 
-    macro_rules! validate_ok {
-        ($name:ident, $principal:expr, $request:expr, $expected:expr) => {
-            #[test]
-            fn $name() {
-                assert_eq!(assert_ok!(validate_password_grant($principal, $request)), $expected);
-            }
+    mod username {
+        use super::*;
+
+        #[test]
+        fn should_return_invalid_request_on_blank_username() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_confidential_principal("aardvark"),
+                map_of! {
+                    "username" => " ",
+                    "password" => "<REDACTED>",
+                    "scope" => "read write",
+                },
+            );
+
+            let response = assert_err!(result);
+
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::InvalidRequest,
+                error_description: Some("invalid parameter: username".into()),
+            });
+        }
+
+        #[test]
+        fn should_return_invalid_request_on_missing_password() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_confidential_principal("aardvark"),
+                map_of! {
+                    "username" => "aardvark",
+                    "scope" => "read write",
+                },
+            );
+
+            let response = assert_err!(result);
+
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::InvalidRequest,
+                error_description: Some("missing parameter: password".into()),
+            });
         }
     }
 
-    validate_err! {
-        should_return_invalid_request_for_a_public_client,
-        ClientPrincipal::new_public_principal("aardvark"),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "read write" },
-        expected_failure! { ErrorType::UnauthorizedClient, "not authorized to: Password" }
-    }
+    mod scope {
+        use super::*;
 
-    validate_err! {
-        should_return_invalid_request_for_an_unauthorised_client,
-        ClientPrincipal::new_principal(ClientConfiguration {
-            client_id: String::from("unauthorised").into(),
-            client_type: ClientType::Confidential,
-            redirect_uris: Default::default(),
-            allowed_scopes: Default::default(),
-            allowed_actions: Default::default(),
-            allowed_grant_types: Default::default(),
-        }),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "read write" },
-        expected_failure! { ErrorType::UnauthorizedClient, "not authorized to: Password" }
-    }
+        #[test]
+        fn should_return_invalid_request_on_blank_scope() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_confidential_principal("aardvark"),
+                map_of! {
+                    "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                    "scope" => " ",
+                },
+            );
 
-    validate_err! {
-        should_return_invalid_request_on_missing_username,
-        ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "password" => "<REDACTED>", "scope" => "read write" },
-        expected_failure! { ErrorType::InvalidRequest, "missing parameter: username" }
-    }
+            let response = assert_err!(result);
 
-    validate_err! {
-        should_return_invalid_request_on_blank_username,
-        ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "username" => " ", "password" => "<REDACTED>", "scope" => "read write" },
-        expected_failure! { ErrorType::InvalidRequest, "invalid parameter: username" }
-    }
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::InvalidScope,
+                error_description: Some("invalid parameter: scope".into()),
+            });
+        }
 
-    validate_err! {
-        should_return_invalid_request_on_missing_password,
-        ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "username" => "aardvark", "scope" => "read write" },
-        expected_failure! { ErrorType::InvalidRequest, "missing parameter: password" }
-    }
+        #[test]
+        fn should_return_invalid_request_with_an_invalid_scope() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_principal(ClientConfiguration {
+                    client_id: String::from("aardvark").into(),
+                    client_type: ClientType::Confidential,
+                    redirect_uris: Default::default(),
+                    allowed_scopes: Default::default(),
+                    allowed_actions: Default::default(),
+                    allowed_grant_types: HashSet::from([Password]),
+                }),
+                map_of! {
+                    "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                    "scope" => "invalid",
+                },
+            );
 
-    validate_err! {
-        should_return_invalid_request_on_blank_scope,
-        ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => " " },
-        expected_failure! { ErrorType::InvalidScope, "invalid parameter: scope" }
-    }
+            let response = assert_err!(result);
 
-    validate_err! {
-        should_return_invalid_request_with_an_invalid_scope,
-        ClientPrincipal::new_principal(ClientConfiguration {
-            client_id: String::from("aardvark").into(),
-            client_type: ClientType::Confidential,
-            redirect_uris: Default::default(),
-            allowed_scopes: Default::default(),
-            allowed_actions: Default::default(),
-            allowed_grant_types: HashSet::from([Password]),
-        }),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "invalid" },
-        expected_failure! { ErrorType::InvalidScope, "invalid parameter: scope" }
-    }
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::InvalidScope,
+                error_description: Some("invalid parameter: scope".into()),
+            });
+        }
 
-    validate_err! {
-        should_return_invalid_request_with_an_invalid_scope_and_a_valid_scope,
-        ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "basic cicada" },
-        expected_failure! { ErrorType::InvalidScope, "invalid parameter: scope" }
-    }
+        #[test]
+        fn should_return_invalid_request_with_an_invalid_scope_and_a_valid_scope() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_confidential_principal("aardvark"),
+                map_of! { "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                    "scope" => "basic cicada",
+                },
+            );
 
-    validate_err! {
-        should_return_invalid_request_with_an_duplicated_valid_scopes,
-        ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "basic basic" },
-        expected_failure! { ErrorType::InvalidScope, "invalid parameter: scope" }
-    }
+            let response = assert_err!(result);
 
-    validate_err! {
-        should_return_invalid_request_with_an_unauthorised_scope,
-        ClientPrincipal::new_principal(ClientConfiguration {
-            client_id: String::from("aardvark").into(),
-            client_type: ClientType::Confidential,
-            redirect_uris: Default::default(),
-            allowed_scopes: HashSet::from([Scope::Read]),
-            allowed_actions: Default::default(),
-            allowed_grant_types: HashSet::from([Password]),
-        }),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "write" },
-        expected_failure! { ErrorType::InvalidScope, "invalid parameter: scope" }
-    }
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::InvalidScope,
+                error_description: Some("invalid parameter: scope".into()),
+            });
+        }
 
-    validate_ok! {
-        should_return_valid_request_if_only_scope_is_not_provided,
-        ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>" },
-        PasswordGrantRequest {
-            principal: ClientPrincipal::new_confidential_client("aardvark"),
-            username: "aardvark".into(),
-            password: "<REDACTED>".into(),
-            scopes: None,
+        #[test]
+        fn should_return_invalid_request_with_an_duplicated_valid_scopes() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_confidential_principal("aardvark"),
+                map_of! {
+                    "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                    "scope" => "basic basic",
+                },
+            );
+
+            let response = assert_err!(result);
+
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::InvalidScope,
+                error_description: Some("invalid parameter: scope".into()),
+            });
+        }
+
+        #[test]
+        fn should_return_invalid_request_with_an_unauthorised_scope() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_principal(ClientConfiguration {
+                    client_id: String::from("aardvark").into(),
+                    client_type: ClientType::Confidential,
+                    redirect_uris: Default::default(),
+                    allowed_scopes: HashSet::from([Scope::Read]),
+                    allowed_actions: Default::default(),
+                    allowed_grant_types: HashSet::from([Password]),
+                }),
+                map_of! {
+                    "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                    "scope" => "write",
+                },
+            );
+
+            let response = assert_err!(result);
+
+            assert_eq!(response, TokenExchangeResponse::Failure {
+                error: ErrorType::InvalidScope,
+                error_description: Some("invalid parameter: scope".into()),
+            });
         }
     }
 
-    validate_ok! {
-        should_return_valid_request_if_only_one_scope_is_provided,
-        ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "basic" },
-        PasswordGrantRequest {
-            principal: ClientPrincipal::new_confidential_client("aardvark"),
-            username: "aardvark".into(),
-            password: "<REDACTED>".into(),
-            scopes: Some(Scopes(HashSet::from([Scope::Basic]))),
-        }
-    }
+    mod valid {
+        use super::*;
 
-    validate_ok! {
-        should_return_valid_request_if_multiple_scopes_are_provided,
-        ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "username" => "aardvark", "password" => "<REDACTED>", "scope" => "basic read write" },
-        PasswordGrantRequest {
-            principal: ClientPrincipal::new_confidential_client("aardvark"),
-            username: "aardvark".into(),
-            password: "<REDACTED>".into(),
-            scopes: Some(Scopes(HashSet::from([Scope::Basic, Scope::Read, Scope::Write]))),
+        #[test]
+        fn should_return_valid_request_if_only_scope_is_not_provided() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_confidential_principal("aardvark"),
+                map_of! {
+                    "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                },
+            );
+
+            let response = assert_ok!(result);
+
+            assert_eq!(response, PasswordGrantRequest {
+                principal: ClientPrincipal::new_confidential_client("aardvark"),
+                username: "aardvark".into(),
+                password: "<REDACTED>".into(),
+                scopes: None,
+            });
+        }
+
+        #[test]
+        fn should_return_valid_request_if_only_one_scope_is_provided() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_confidential_principal("aardvark"),
+                map_of! {
+                    "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                    "scope" => "basic",
+                },
+            );
+
+            let response = assert_ok!(result);
+
+            assert_eq!(response, PasswordGrantRequest {
+                principal: ClientPrincipal::new_confidential_client("aardvark"),
+                username: "aardvark".into(),
+                password: "<REDACTED>".into(),
+                scopes: Some(Scopes(HashSet::from([Scope::Basic]))),
+            });
+        }
+
+        #[test]
+        fn should_return_valid_request_if_multiple_scopes_are_provided() {
+            let result = validate_password_grant(
+                ClientPrincipal::new_confidential_principal("aardvark"),
+                map_of! {
+                    "username" => "aardvark",
+                    "password" => "<REDACTED>",
+                    "scope" => "basic read write",
+                },
+            );
+
+            let response = assert_ok!(result);
+
+            assert_eq!(response, PasswordGrantRequest {
+                principal: ClientPrincipal::new_confidential_client("aardvark"),
+                username: "aardvark".into(),
+                password: "<REDACTED>".into(),
+                scopes: Some(Scopes(HashSet::from([Scope::Basic, Scope::Read, Scope::Write]))),
+            });
         }
     }
 }

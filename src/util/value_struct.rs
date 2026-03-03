@@ -8,13 +8,13 @@ pub trait ValueStruct {
 macro_rules! value_struct {
     (
         $(#[$m:meta])*
-        pub struct $struct_name:ident($field_type:ident);
+        $vis:vis struct $struct_name:ident($field_type:ident);
     ) => {
         $(#[$m])*
         #[non_exhaustive]
         #[derive(Clone, Hash, Eq, PartialEq)]
         #[cfg_attr(test, derive(Debug))]
-        pub struct $struct_name($field_type);
+        $vis struct $struct_name($field_type);
 
         impl crate::util::value_struct::ValueStruct for $struct_name {
             type ValueType = $field_type;
