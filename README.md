@@ -38,6 +38,13 @@ The standard Cargo (Rust build tool) approach
 cargo build
 ```
 
+## Linting
+
+Because compiler plugins were removed you have to manually check outside of `cargo build`
+```bash
+cargo clippy
+```
+
 ## Testing
 
 The standard Cargo (Rust build tool) approach
