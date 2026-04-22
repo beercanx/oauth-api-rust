@@ -68,10 +68,10 @@ jobs:
           reviewdog -f=cargo-check -name="Cargo Check" -reporter=github-check -filter-mode=nofilter -fail-level=warning
 
       - name: Build
-        run: cargo build --verbose
+        run: cargo build
 
       - name: Test
-        run: cargo test --verbose
+        run: cargo test
 
       - name: Clippy
         env:
