@@ -56,7 +56,9 @@ impl InMemoryClientConfigurationRepository {
 
 impl ClientConfigurationRepository for InMemoryClientConfigurationRepository {
     async fn find_by_id(&self, client_id: &ClientId) -> io::Result<Option<ClientConfiguration>> {
-        Ok(self.map.lock().unwrap().get(client_id).cloned())
+        Ok(
+            self.map.lock().unwrap().get(client_id).cloned()
+        )
     }
 
     async fn find_by_client_id(&self, client_id: &str) -> io::Result<Option<ClientConfiguration>> {
