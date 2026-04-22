@@ -22,6 +22,10 @@ env:
 jobs:
   build:
 
+    # Required to use the reviewdog tool.
+    permissions:
+      checks: write
+
     strategy:
       matrix:
         platform:
@@ -30,7 +34,8 @@ jobs:
     runs-on: ${{ matrix.platform.os }}-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
 
       - name: Cache
         uses: actions/cache@v5
@@ -41,17 +46,35 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: reviewdog setup
+        uses: reviewdog/action-setup@d8edfce3dd5e1ec6978745e801f9c50b5ef80252 # v1.4.0
+        with:
+          reviewdog_version: v0.21.0
+
       - name: Display build versions
         run: |
           cargo --version
           rustc --version
           rustup toolchain list
+          cargo clippy --version
+          reviewdog -version
+
+      - name: Check
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          cargo check -q --message-format=short |
+          reviewdog -f=cargo-check -name="Cargo Check" -reporter=github-check -fail-level=error
 
       - name: Build
         run: cargo build --verbose
 
-      - name: Run tests
+      - name: Test
         run: cargo test --verbose
 
-      - name: Run clippy
-        run: cargo clippy --all-targets --all-features
+      - name: Clippy
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          cargo clippy --all-targets --all-features --color never -q --message-format=short |
+          reviewdog -f=clippy -name="Clippy" -reporter=github-check -fail-level=error

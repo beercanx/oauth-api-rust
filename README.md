@@ -40,7 +40,7 @@ cargo build
 
 ## Linting
 
-Because compiler plugins were removed you have to manually check outside of `cargo build`
+The standard rust linter, which is enforced by the GitHub Actions workflow
 ```bash
 cargo clippy
 ```
