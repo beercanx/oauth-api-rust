@@ -19,8 +19,8 @@ pub async fn require_confidential_client_authentication<C: ClientAuthenticator>(
     let client = match maybe_basic_auth {
         None => return Err(StatusCode::UNAUTHORIZED),
         Some(TypedHeader(Authorization(basic))) => {
-            authenticator.authenticate_as_confidential_client(basic.username(), basic.password().as_bytes()).await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            authenticator.authenticate_as_confidential_client(basic.username(), basic.password().as_bytes())
+                //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .ok_or(StatusCode::UNAUTHORIZED)?
         },
     };
@@ -59,15 +59,15 @@ pub async fn require_client_authentication<C: ClientAuthenticator>(
 
         // Confidential client via Basic auth
         (Some(TypedHeader(Authorization(basic))), None) => {
-            authenticator.authenticate_as_confidential_client(basic.username(), basic.password().as_bytes()).await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            authenticator.authenticate_as_confidential_client(basic.username(), basic.password().as_bytes())
+                //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .map(ClientPrincipal::Confidential)
         },
 
         // Public client via body client_id
         (None, Some(client_id)) => {
-            authenticator.authenticate_as_public_client(&client_id).await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+            authenticator.authenticate_as_public_client(&client_id)
+                //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .map(ClientPrincipal::Public)
         },
     };

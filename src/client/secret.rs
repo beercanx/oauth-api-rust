@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use uuid::Uuid;
 use crate::client::ClientId;
 use crate::util::value_struct::ValueStruct;
@@ -12,20 +12,20 @@ pub struct ClientSecret {
 }
 
 pub trait ClientSecretRepository: Send + Sync + Clone {
-    fn find_by_id(&self, id: &Uuid) -> impl Future<Output = std::io::Result<Option<ClientSecret>>> + Send;
-    fn find_all_by_client(&self, client_id: &ClientId) -> impl Future<Output = std::io::Result<Vec<ClientSecret>>> + Send;
-    fn find_all_by_client_id(&self, client_id: &str) -> impl Future<Output = std::io::Result<Vec<ClientSecret>>> + Send;
+    fn find_by_id(&self, id: &Uuid) -> Option<ClientSecret>;
+    fn find_all_by_client(&self, client_id: &ClientId) -> Vec<ClientSecret>;
+    fn find_all_by_client_id(&self, client_id: &str) -> Vec<ClientSecret>;
 }
 
 #[derive(Clone, Default)]
 pub struct InMemoryClientSecretRepository {
-    map: Arc<Mutex<HashMap<Uuid, ClientSecret>>>,
+    store: Arc<Mutex<HashMap<Uuid, ClientSecret>>>,
 }
 
 impl InMemoryClientSecretRepository {
     pub fn new() -> Self {
         Self {
-            map: Arc::new(Mutex::new(HashMap::from([
+            store: Arc::new(Mutex::new(HashMap::from([
                 Self::create_hashed_entry("aardvark", b"badger"),
             ])))
         }
@@ -33,6 +33,12 @@ impl InMemoryClientSecretRepository {
 
     // TODO - Remove once we've got a means of creating new clients
     fn create_hashed_entry(client_id: &str, client_secret: &[u8]) -> (Uuid, ClientSecret) {
+
+        #![warn(
+            clippy::unwrap_used,
+            clippy::expect_used,
+            clippy::panic,
+        )]
 
         use argon2::Argon2;
         use argon2::password_hash::Salt;
@@ -52,16 +58,20 @@ impl InMemoryClientSecretRepository {
             hashed_secret: hashed
         })
     }
+
+    fn lock_store(&self) -> MutexGuard<'_, HashMap<Uuid, ClientSecret>> {
+        self.store.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
 }
 
 impl ClientSecretRepository for InMemoryClientSecretRepository {
-    async fn find_by_id(&self, id: &Uuid) -> std::io::Result<Option<ClientSecret>> {
-        Ok(self.map.lock().unwrap().get(id).cloned())
+    fn find_by_id(&self, id: &Uuid) -> Option<ClientSecret> {
+        self.lock_store().get(id).cloned()
     }
-    async fn find_all_by_client(&self, client_id: &ClientId) -> std::io::Result<Vec<ClientSecret>> {
-        Ok(self.map.lock().unwrap().values().filter(|secret| &secret.client_id == client_id).cloned().collect())
+    fn find_all_by_client(&self, client_id: &ClientId) -> Vec<ClientSecret> {
+        self.lock_store().values().filter(|secret| &secret.client_id == client_id).cloned().collect()
     }
-    async fn find_all_by_client_id(&self, client_id: &str) -> std::io::Result<Vec<ClientSecret>> {
-        Ok(self.map.lock().unwrap().values().filter(|secret| secret.client_id.value() == client_id).cloned().collect())
+    fn find_all_by_client_id(&self, client_id: &str) -> Vec<ClientSecret> {
+        self.lock_store().values().filter(|secret| secret.client_id.value() == client_id).cloned().collect()
     }
 }

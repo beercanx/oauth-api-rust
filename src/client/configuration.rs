@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::io;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use crate::client::{ClientAction, ClientId, ClientType, GrantType};
 use crate::scope::Scope;
 
@@ -16,19 +15,19 @@ pub struct ClientConfiguration {
 }
 
 pub trait ClientConfigurationRepository: Send + Sync + Clone {
-    fn find_by_id(&self, client_id: &ClientId) -> impl Future<Output = io::Result<Option<ClientConfiguration>>> + Send;
-    fn find_by_client_id(&self, client_id: &str) -> impl Future<Output = io::Result<Option<ClientConfiguration>>> + Send;
+    fn find_by_id(&self, client_id: &ClientId) -> Option<ClientConfiguration>;
+    fn find_by_client_id(&self, client_id: &str) -> Option<ClientConfiguration>;
 }
 
 #[derive(Clone, Default)]
 pub struct InMemoryClientConfigurationRepository {
-    map: Arc<Mutex<HashMap<ClientId, ClientConfiguration>>>,
+    store: Arc<Mutex<HashMap<ClientId, ClientConfiguration>>>,
 }
 
 impl InMemoryClientConfigurationRepository {
     pub fn new() -> Self {
         Self {
-            map: Arc::new(Mutex::new(HashMap::from([
+            store: Arc::new(Mutex::new(HashMap::from([
                 // TODO - Remove once we've got a means of creating new clients
                 Self::create_entry(ClientConfiguration {
                     client_id: ClientId(String::from("aardvark")),
@@ -52,16 +51,17 @@ impl InMemoryClientConfigurationRepository {
     fn create_entry(configuration: ClientConfiguration) -> (ClientId, ClientConfiguration) {
         (configuration.client_id.clone(), configuration)
     }
+    // TODO - Understand lifetimes better, is this an anti pattern?
+    fn lock_store(&self) -> MutexGuard<'_, HashMap<ClientId, ClientConfiguration>> {
+        self.store.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
 }
 
 impl ClientConfigurationRepository for InMemoryClientConfigurationRepository {
-    async fn find_by_id(&self, client_id: &ClientId) -> io::Result<Option<ClientConfiguration>> {
-        Ok(
-            self.map.lock().unwrap().get(client_id).cloned()
-        )
+    fn find_by_id(&self, client_id: &ClientId) -> Option<ClientConfiguration> {
+        self.lock_store().get(client_id).cloned()
     }
-
-    async fn find_by_client_id(&self, client_id: &str) -> io::Result<Option<ClientConfiguration>> {
-        self.find_by_id(&ClientId(String::from(client_id))).await
+    fn find_by_client_id(&self, client_id: &str) -> Option<ClientConfiguration> {
+        self.find_by_id(&ClientId(String::from(client_id)))
     }
 }
