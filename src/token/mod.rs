@@ -1,4 +1,5 @@
 pub mod repository;
+mod schema;
 
 use serde::Serialize;
 use uuid::Uuid;
