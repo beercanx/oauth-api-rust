@@ -25,6 +25,7 @@ jobs:
     # Required to use the reviewdog tool.
     permissions:
       checks: write
+      pull-requests: write
 
     strategy:
       matrix:
