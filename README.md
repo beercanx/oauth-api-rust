@@ -38,6 +38,13 @@ The standard Cargo (Rust build tool) approach
 cargo build
 ```
 
+## Linting
+
+The standard rust linter, which is enforced by the GitHub Actions workflow
+```bash
+cargo clippy
+```
+
 ## Testing
 
 The standard Cargo (Rust build tool) approach
