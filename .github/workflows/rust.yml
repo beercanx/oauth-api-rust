@@ -48,9 +48,7 @@ jobs:
           rustc --version
           rustup toolchain list
           cargo clippy --version
-
-      - name: Check
-        run: cargo check -q --all-targets --all-features
+          jq --version
 
       - name: Build
         run: cargo build
@@ -58,5 +56,14 @@ jobs:
       - name: Test
         run: cargo test
 
+      # Run Clippy and convert compiler messages to GitHub annotations
       - name: Clippy
-        run: cargo clippy -q --all-targets --all-features
+        shell: bash
+        run: >-
+          cargo clippy -q --all-targets --all-features --message-format=json
+          | jq -r 'select(.reason == "compiler-message")
+            | .message
+            | . as $message
+            | .spans[]
+            | select(.is_primary)
+            | "::\($message.level) file=\(.file_name),line=\(.line_start),endLine=\(.line_end),col=\(.column_start),endColumn=\(.column_end),title=Clippy::\($message.message)"'
