@@ -60,3 +60,9 @@ jobs:
 
       - name: Clippy
         run: cargo clippy -q --all-targets --all-features
+
+      - name: Test Check Annotation
+        run: echo '::warning file=src/client/secret.rs,line=9,endLine=9,col=12,endColumn=24,title=Check::field `id` is never read'
+
+      - name: Test Clippy Annotation
+        run: echo '::error file=src/graceful_shutdown.rs,line=9,endLine=11,col=9,endColumn=56,title=Clippy::used `expect()` on a `Result` value'

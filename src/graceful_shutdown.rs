@@ -10,6 +10,7 @@ pub async fn signal() {
             .await
             .expect("failed to install Ctrl+C handler");
 
+        
         println!("Received a ctrl-c event, shutting down gracefully.");
     };
 
