@@ -50,18 +50,6 @@ jobs:
           cargo clippy --version
           jq --version
 
-      # Run Cargo Check and convert compiler messages to GitHub annotations
-      - name: Check
-        shell: bash
-        run: >-
-          cargo check -q --all-targets --all-features --message-format=json
-          | jq -r 'select(.reason == "compiler-message")
-            | .message
-            | . as $message
-            | .spans[]
-            | select(.is_primary)
-            | "::\($message.level) file=\(.file_name),line=\(.line_start),endLine=\(.line_end),col=\(.column_start),endColumn=\(.column_end),title=Cargo Check::\($message.message)"'
-
       - name: Build
         run: cargo build
 
