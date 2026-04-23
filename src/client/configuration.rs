@@ -51,7 +51,6 @@ impl InMemoryClientConfigurationRepository {
     fn create_entry(configuration: ClientConfiguration) -> (ClientId, ClientConfiguration) {
         (configuration.client_id.clone(), configuration)
     }
-    // TODO - Understand lifetimes better, is this an anti pattern?
     fn lock_store(&self) -> MutexGuard<'_, HashMap<ClientId, ClientConfiguration>> {
         self.store.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }

@@ -44,14 +44,13 @@ where
         let secrets = self.secret_repository.find_all_by_client_id(client_id);
 
         let maybe_secret = secrets.iter()
-            .filter(|secret| {
+            .find(|secret| {
                 let hash = match PasswordHash::new(&secret.hashed_secret) {
                     Err(_) => return false,
                     Ok(hash) => hash,
                 };
                 Argon2::default().verify_password(client_secret, &hash).is_ok()
-            })
-            .next(); // TODO - Verify this behaves like `first()`
+            });
 
         let client_id = match maybe_secret {
             None => return None,
