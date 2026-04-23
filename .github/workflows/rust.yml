@@ -76,7 +76,7 @@ jobs:
       # Run Clippy and convert compiler messages to GitHub annotations
       - name: Clippy
         run: >-
-          cargo clippy -q --all-targets --all-features --message-format=json |
+          cargo clippy -q --all-targets --all-features --message-format=json
           | jq -r 'select(.reason == "compiler-message")
             | .message
             | . as $message
