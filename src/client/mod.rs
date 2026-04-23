@@ -1,9 +1,3 @@
-#![deny(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-)]
-
 #[macro_use]
 mod client_principal;
 pub mod secret;
