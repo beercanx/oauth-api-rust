@@ -34,11 +34,8 @@ impl InMemoryClientSecretRepository {
     // TODO - Remove once we've got a means of creating new clients
     fn create_hashed_entry(client_id: &str, client_secret: &[u8]) -> (Uuid, ClientSecret) {
 
-        #![warn(
-            clippy::unwrap_used,
-            clippy::expect_used,
-            clippy::panic,
-        )]
+        // Allowed because this isn't intended to be production used code
+        #![allow(clippy::unwrap_used)]
 
         use argon2::Argon2;
         use argon2::password_hash::Salt;
