@@ -48,9 +48,24 @@ jobs:
           rustc --version
           rustup toolchain list
           cargo clippy --version
+          jq --version
 
+      # Run Cargo Check and convert compiler messages to GitHub annotations
       - name: Check
-        run: cargo check -q --all-targets --all-features
+        run: >-
+          cargo check -q --all-targets --all-features --message-format=json
+          | jq -r 'select(.reason == "compiler-message")
+            | .message
+            | . as $message
+            | .spans[]
+            | select(.is_primary)
+            | "::\($message.level)
+                file=\(.file_name),
+                line=\(.line_start),
+                endLine=\(.line_end),
+                col=\(.column_start),
+                endColumn=\(.column_end),
+                title=Cargo Check::\($message.message)"'
 
       - name: Build
         run: cargo build
@@ -58,11 +73,19 @@ jobs:
       - name: Test
         run: cargo test
 
+      # Run Clippy and convert compiler messages to GitHub annotations
       - name: Clippy
-        run: cargo clippy -q --all-targets --all-features
-
-      - name: Test Check Annotation
-        run: echo '::warning file=src/client/secret.rs,line=9,endLine=9,col=12,endColumn=24,title=Check::field `id` is never read'
-
-      - name: Test Clippy Annotation
-        run: echo '::error file=src/graceful_shutdown.rs,line=9,endLine=11,col=9,endColumn=56,title=Clippy::used `expect()` on a `Result` value'
+        run: >-
+          cargo clippy -q --all-targets --all-features --message-format=json |
+          | jq -r 'select(.reason == "compiler-message")
+            | .message
+            | . as $message
+            | .spans[]
+            | select(.is_primary)
+            | "::\($message.level)
+                file=\(.file_name),
+                line=\(.line_start),
+                endLine=\(.line_end),
+                col=\(.column_start),
+                endColumn=\(.column_end),
+                title=Clippy::\($message.message)"'
