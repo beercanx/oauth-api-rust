@@ -68,8 +68,8 @@ mod integration_tests {
 
     const TOKEN_ENDPOINT: &str = "/token";
     const APPLICATION_WWW_FORM_URLENCODED: &str = "application/x-www-form-urlencoded";
-    const TEST_CLIENT_USERNAME: &'static str = "aardvark";
-    const TEST_CLIENT_PASSWORD: &'static str = "badger";
+    const TEST_CLIENT_USERNAME: &str = "aardvark";
+    const TEST_CLIENT_PASSWORD: &str = "badger";
 
     macro_rules! under_test {
         () => {
@@ -84,7 +84,8 @@ mod integration_tests {
     }
 
     async fn extract_json_body(response: Response<Body>) -> HashMap<String, Value> {
-        serde_json::from_slice(response.into_body().collect().await.unwrap().to_bytes().as_ref()).unwrap()
+        let body_bytes = assert_ok!(response.into_body().collect().await);
+        assert_ok!(serde_json::from_slice(body_bytes.to_bytes().as_ref()))
     }
 
     fn basic_auth(username: &str, password: &str) -> String {
@@ -101,14 +102,14 @@ mod integration_tests {
                 async fn $name() {
                     let router = under_test!();
 
-                    let request = Request::builder()
+                    let request = assert_ok!(Request::builder()
                         .method($method)
                         .uri(TOKEN_ENDPOINT)
                         .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                         .body(Body::empty())
-                        .unwrap();
+                    );
 
-                    let response = router.oneshot(request).await.unwrap();
+                    let response = assert_ok!(router.oneshot(request).await);
 
                     assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
                 }
@@ -131,14 +132,15 @@ mod integration_tests {
         async fn should_require_client_authentication_on_missing_authorization_header() {
             let router = under_test!();
 
-            let request = Request::builder()
+            let request = assert_ok!(
+                Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header("Content-Type", APPLICATION_WWW_FORM_URLENCODED)
                 .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic"))
-                .unwrap();
+            );
 
-            let response = router.oneshot(request).await.unwrap();
+            let response = assert_ok!(router.oneshot(request).await);
 
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
@@ -147,15 +149,16 @@ mod integration_tests {
         async fn should_require_client_authentication_on_invalid_confidential_client_credentials() {
             let router = under_test!();
 
-            let request = Request::builder()
+            let request = assert_ok!(
+                Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .header(AUTHORIZATION, basic_auth("invalid", "<REDACTED>"))
                 .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic"))
-                .unwrap();
+            );
 
-            let response = router.oneshot(request).await.unwrap();
+            let response = assert_ok!(router.oneshot(request).await);
 
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
@@ -164,14 +167,15 @@ mod integration_tests {
         async fn should_require_client_authentication_on_invalid_public_client_credentials() {
             let router = under_test!();
 
-            let request = Request::builder()
+            let request = assert_ok!(
+                Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic&client_id=invalid"))
-                .unwrap();
+            );
 
-            let response = router.oneshot(request).await.unwrap();
+            let response = assert_ok!(router.oneshot(request).await);
 
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
@@ -180,15 +184,16 @@ mod integration_tests {
         async fn should_require_client_authentication_via_only_one_method() {
             let router = under_test!();
 
-            let request = Request::builder()
+            let request = assert_ok!(
+                Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic&client_id=badger"))
-                .unwrap();
+            );
 
-            let response = router.oneshot(request).await.unwrap();
+            let response = assert_ok!(router.oneshot(request).await);
 
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
@@ -202,15 +207,16 @@ mod integration_tests {
 
                     let (content_type, body) = $value;
 
-                    let request = Request::builder()
+                    let request = assert_ok!(
+                        Request::builder()
                         .method(Method::POST)
                         .uri(TOKEN_ENDPOINT)
                         .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                         .header(CONTENT_TYPE, format!("application/{content_type}"))
                         .body(Body::from(body))
-                        .unwrap();
+                    );
 
-                    let response = router.oneshot(request).await.unwrap();
+                    let response = assert_ok!(router.oneshot(request).await);
 
                     assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
                 }
@@ -232,15 +238,16 @@ mod integration_tests {
 
             let router = under_test!();
 
-            let request = Request::builder()
+            let request = assert_ok!(
+                Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .body(Body::from("grant_type=aardvark"))
-                .unwrap();
+            );
 
-            let response = router.oneshot(request).await.unwrap();
+            let response = assert_ok!(router.oneshot(request).await);
             assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
             let body = extract_json_body(response).await;
@@ -257,15 +264,15 @@ mod integration_tests {
         async fn should_return_ok_for_valid_password_grants() {
             let router = under_test!();
 
-            let request = Request::builder()
+            let request = assert_ok!(Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .body(Body::from("grant_type=password&username=aardvark&password=badger&scope=basic"))
-                .unwrap();
+            );
 
-            let response = router.oneshot(request).await.unwrap();
+            let response = assert_ok!(router.oneshot(request).await);
             assert_eq!(response.status(), StatusCode::OK);
 
             let body = extract_json_body(response).await;
@@ -282,15 +289,15 @@ mod integration_tests {
         async fn should_return_ok_for_valid_authorization_code_grants() {
             let router = under_test!();
 
-            let request = Request::builder()
+            let request = assert_ok!(Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .body(Body::from(format!("grant_type=authorization_code&code={}&scope=basic&redirect_uri=https%3A%2F%2Fredirect.baconi.co.uk", uuid::Uuid::new_v4())))
-                .unwrap();
+            );
 
-            let response = router.oneshot(request).await.unwrap();
+            let response = assert_ok!(router.oneshot(request).await);
             assert_eq!(response.status(), StatusCode::OK);
 
             let body = extract_json_body(response).await;
@@ -306,15 +313,15 @@ mod integration_tests {
         async fn should_return_ok_for_valid_refresh_token_grant() {
             let router = under_test!();
 
-            let request = Request::builder()
+            let request = assert_ok!(Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .body(Body::from(format!("grant_type=refresh_token&refresh_token={}&scope=basic", uuid::Uuid::new_v4())))
-                .unwrap();
+            );
 
-            let response = router.oneshot(request).await.unwrap();
+            let response = assert_ok!(router.oneshot(request).await);
             assert_eq!(response.status(), StatusCode::OK);
 
             let body = extract_json_body(response).await;
@@ -330,15 +337,16 @@ mod integration_tests {
         async fn should_return_ok_for_valid_assertion_grant() {
             let router = under_test!();
 
-            let request = Request::builder()
+            let request = assert_ok!(
+                Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .body(Body::from(format!("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion={}", uuid::Uuid::new_v4())))
-                .unwrap();
+            );
 
-            let response = router.oneshot(request).await.unwrap();
+            let response = assert_ok!(router.oneshot(request).await);
             assert_eq!(response.status(), StatusCode::OK);
 
             let body = extract_json_body(response).await;

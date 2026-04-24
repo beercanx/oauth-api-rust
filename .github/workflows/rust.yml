@@ -17,7 +17,7 @@ env:
   CARGO_TERM_COLOR: always
 
   # Make sure CI fails on all warnings, including Clippy lints
-  # RUSTFLAGS: "-Dwarnings"
+  # RUSTFLAGS: --deny warnings
 
 jobs:
   build:
@@ -30,7 +30,8 @@ jobs:
     runs-on: ${{ matrix.platform.os }}-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
 
       - name: Cache
         uses: actions/cache@v5
@@ -46,12 +47,23 @@ jobs:
           cargo --version
           rustc --version
           rustup toolchain list
+          cargo clippy --version
+          jq --version
 
       - name: Build
-        run: cargo build --verbose
+        run: cargo build
 
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Test
+        run: cargo test
 
-      - name: Run clippy
-        run: cargo clippy --all-targets --all-features
+      # Run Clippy and convert compiler messages to GitHub annotations
+      - name: Clippy
+        shell: bash
+        run: >-
+          cargo clippy -q --all-targets --all-features --message-format=json
+          | jq -r 'select(.reason == "compiler-message")
+            | .message
+            | . as $message
+            | .spans[]
+            | select(.is_primary)
+            | "::\($message.level) file=\(.file_name),line=\(.line_start),endLine=\(.line_end),col=\(.column_start),endColumn=\(.column_end),title=Clippy::\($message.message)"'

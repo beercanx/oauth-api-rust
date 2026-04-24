@@ -1,3 +1,8 @@
+#![allow(
+    // Allowed because we need to panic if we cannot register the signal handler at start up
+    clippy::expect_used,
+)]
+
 use tokio::signal;
 
 pub async fn signal() {

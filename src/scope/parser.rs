@@ -25,9 +25,7 @@ pub fn parse_scopes(maybe_space_delimited_scopes: Option<&String>) -> Result<Opt
 
             let scopes = raw_scopes
                 .into_iter()
-                .map(|scope| scope.parse::<Scope>())
-                .filter(|scope| scope.is_ok())
-                .map(|scope| scope.unwrap())
+                .flat_map(|scope| scope.parse::<Scope>())
                 .collect::<HashSet<Scope>>();
 
             if scopes.len() != raw_scopes_count {
