@@ -14,6 +14,7 @@ pub struct ClientConfiguration {
     pub allowed_grant_types: HashSet<GrantType>,
 }
 
+// TODO - #[trait_variant::make(Send)]
 pub trait ClientConfigurationRepository: Send + Sync + Clone {
     fn find_by_id(&self, client_id: &ClientId) -> Option<ClientConfiguration>;
     fn find_by_client_id(&self, client_id: &str) -> Option<ClientConfiguration>;
@@ -33,7 +34,7 @@ impl InMemoryClientConfigurationRepository {
                     client_id: ClientId(String::from("aardvark")),
                     client_type: ClientType::Confidential,
                     redirect_uris: HashSet::from([]),
-                    allowed_scopes: HashSet::from([Scope::Basic]),
+                    allowed_scopes: HashSet::from([Scope::Basic, Scope::Read, Scope::Write]),
                     allowed_actions: HashSet::from([ClientAction::Introspect]),
                     allowed_grant_types: HashSet::from([GrantType::Password]),
                 }),

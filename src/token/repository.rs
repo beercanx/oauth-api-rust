@@ -1,78 +1,147 @@
-use crate::token::Token;
+use crate::token::{AccessToken, Token};
 use std::collections::HashMap;
-use std::io;
+use std::error::Error;
 use std::marker::PhantomData;
 use std::sync::{Arc, Mutex, MutexGuard};
-use diesel::r2d2::{ConnectionManager, Pool, R2D2Connection};
-use diesel::{QueryDsl, RunQueryDsl, SqliteConnection};
-use diesel::query_builder::AsQuery;
-use uuid::Uuid;
-use crate::token::schema::access_tokens::dsl::access_tokens;
+use anyhow::{Context, Result};
+use diesel::r2d2::ConnectionManager;
+use diesel::{RunQueryDsl, SqliteConnection};
+use sqlx::{FromRow, Pool, Sqlite};
+use sqlx::sqlite::{SqlitePoolOptions, SqliteRow};
+use crate::util::uuid_wrapper::UuidWrapper;
 
-pub trait TokenRepository<T: Token + Clone + Send>: Send + Sync + Clone {
-    fn get_token(&self, id: Uuid) -> Option<T>;
-    fn save_token(&self, token: &T);
+#[trait_variant::make(Send)]
+pub trait TokenRepository<T: Token>: Sync + Clone {
+    async fn get_token(&self, id: UuidWrapper) -> Result<Option<T>>;
+    async fn save_token(&self, token: &T) -> Result<()>;
 }
 
 #[derive(Clone, Default)]
 pub struct InMemoryTokenRepository<T: Token> {
-    store: Arc<Mutex<HashMap<Uuid, T>>>,
+    store: Arc<Mutex<HashMap<UuidWrapper, T>>>,
 }
 
 impl<T: Token> InMemoryTokenRepository<T> {
     pub fn new() -> Self {
         Self { store: Arc::new(Mutex::new(HashMap::new())) }
     }
-    fn lock_store(&self) -> MutexGuard<'_, HashMap<Uuid, T>> {
+    fn lock_store(&self) -> MutexGuard<'_, HashMap<UuidWrapper, T>> {
         self.store.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
-impl<T: Token + Clone + Send> TokenRepository<T> for InMemoryTokenRepository<T>
+impl<T: Token> TokenRepository<T> for InMemoryTokenRepository<T>
 {
-    fn get_token(&self, id: Uuid) -> Option<T> {
-        self.lock_store().get(&id).cloned()
+    async fn get_token(&self, id: UuidWrapper) -> Result<Option<T>> {
+        Ok(self.lock_store().get(&id).cloned())
     }
 
-    fn save_token(&self, token: &T) {
+    async fn save_token(&self, token: &T) -> Result<()> {
         self.lock_store().insert(token.id(), token.clone());
+        Ok(())
     }
 }
 
 #[derive(Clone)]
-pub struct DieselTokenRepository<T: Token, C> where C: R2D2Connection + 'static {
-    _token_type: PhantomData<T>,
-    pool: Pool<ConnectionManager<C>>,
+pub struct DieselSqliteAccessTokenRepository {
+    pool: diesel::r2d2::Pool<ConnectionManager<SqliteConnection>>,
 }
-impl<T: Token, C: R2D2Connection> DieselTokenRepository<T, C> {
-    pub fn new<S: Into<String>>(database_url: S) -> DieselTokenRepository<T, C> {
-        DieselTokenRepository {
-            _token_type: PhantomData,
-            pool: Pool::builder()
-                .test_on_check_out(true)
-                .build(ConnectionManager::<C>::new(database_url))
-                .expect("Could not build connection pool."),
-        }
+
+impl DieselSqliteAccessTokenRepository {
+    pub async fn new(database_url: &str) -> Result<DieselSqliteAccessTokenRepository> {
+
+        let manager = ConnectionManager::<SqliteConnection>::new(database_url);
+
+        let pool = diesel::r2d2::Pool::builder()
+            .test_on_check_out(true)
+            .build(manager)
+            .with_context(|| format!("Failed to create Diesel sqlite database pool: {}", database_url))?;
+
+        Ok(Self {
+            pool
+        })
+    }
+    pub async fn run_diesel_migrations(&self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+        use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+        const ACCESS_TOKEN_MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/access_tokens");
+        self.pool.get()?.run_pending_migrations(ACCESS_TOKEN_MIGRATIONS)?;
+        Ok(())
     }
 }
 
-impl<T, C> TokenRepository<T> for DieselTokenRepository<T, C>
-where
-    T: Token + Clone + Send + Sync,
-    C: R2D2Connection + Clone
-{
-    fn get_token(&self, token: Uuid) -> Option<T> {
+impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
+
+    async fn get_token(&self, token: UuidWrapper) -> Result<Option<AccessToken>> {
+        use super::schema::access_tokens;
         use super::schema::access_tokens::dsl::*;
+        use diesel::prelude::*;
 
-        // self.pool.get().map(|conn| {
-        //     let token = token.to_string();
-        //     access_tokens.find(token).single_value()
-        // })
+        let connection = &mut self.pool.get()
+            .with_context(|| "Failed to get connection from pool")?;
 
-        None
+        let result = access_tokens::table
+            .filter(id.eq(token))
+            .first::<AccessToken>(connection)
+            .optional()
+            .with_context(|| "Error querying access token database")?;
+
+        Ok(result)
     }
 
-    fn save_token(&self, token: &T) {
+    async fn save_token(&self, token: &AccessToken) -> Result<()> {
+
+        use super::schema::access_tokens::dsl::*;
+        use diesel::dsl::insert_into;
+
+        let connection = &mut self.pool.get()
+            .with_context(|| "Failed to get connection from pool")?;
+
+        insert_into(access_tokens)
+            .values(token)
+            .execute(connection)
+            .with_context(|| "Error saving access token to database")?;
+
+        Ok(())
+    }
+}
+
+#[derive(Clone)]
+pub struct SqlxSqliteTokenRepository<T: Token> {
+    _token_type: PhantomData<T>,
+    pool: Pool<Sqlite>,
+}
+
+impl<T: Token> SqlxSqliteTokenRepository<T> {
+    pub async fn new(database_url: &str) -> Result<SqlxSqliteTokenRepository<T>> {
+        Ok(
+            Self {
+                _token_type: PhantomData,
+                pool: SqlitePoolOptions::new()
+                    .min_connections(1)
+                    .max_connections(5)
+                    .connect(database_url)
+                    .await
+                    .with_context(||
+                        format!("Failed to create SQLX sqlite database pool: {}", database_url)
+                    )?
+            }
+        )
+    }
+}
+
+impl<T: Token + Unpin + for<'r> FromRow<'r, SqliteRow>> TokenRepository<T> for SqlxSqliteTokenRepository<T> {
+
+    async fn get_token(&self, token: UuidWrapper) -> Result<Option<T>> {
+
+        let result = sqlx::query_as::<Sqlite, T>("SELECT * FROM access_tokens WHERE id = ?")
+            .bind(token)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(result)
+    }
+
+    async fn save_token(&self, token: &T) -> Result<()> {
         todo!()
     }
 }

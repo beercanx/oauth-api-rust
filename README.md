@@ -63,7 +63,12 @@ cargo run
 
 Hit the token exchange endpoint with a password grant _(yeah its deprecated; but it's a quick lazy way to start)_.
 ```bash
-curl -vvv -X POST -H 'Content-Type: application/x-www-form-urlencoded' -u 'aardvark:badger' -d 'grant_type=password&scope=basic&username=aardvark&password=P%4055w0rd' http://127.0.0.1:8080/token
+curl -v -X POST -H 'Content-Type: application/x-www-form-urlencoded' -u 'aardvark:badger' -d 'grant_type=password&scope=basic&username=aardvark&password=P%4055w0rd' http://127.0.0.1:8080/token
+```
+
+Hit the token introspection endpoint with the token just issued.
+```bash
+curl -v -X POST -H 'Content-Type: application/x-www-form-urlencoded' -u 'aardvark:badger' -d 'token=483d83dd-92a2-4d73-817f-8fd0e7203cb3' http://127.0.0.1:8080/introspect
 ```
 
 ## Reading materials
@@ -73,3 +78,8 @@ curl -vvv -X POST -H 'Content-Type: application/x-www-form-urlencoded' -u 'aardv
 * https://docs.rs/axum/latest/axum/middleware/index.html
 * https://docs.rs/axum/latest/axum/error_handling/index.html
 * https://docs.rs/tower/latest/tower
+* https://crates.io/crates/anyhow
+* https://crates.io/crates/thiserror
+* https://github.com/launchbadge/sqlx
+* https://docs.diesel.rs/2.0.x/diesel/index.html
+* https://obito.fr/posts/2022/12/use-uuid-in-sqlite-database-with-rust-diesel.rs/

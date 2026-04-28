@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use chrono::{Duration, Utc};
 use serde::Deserialize;
 use ClientPrincipal::Confidential;
 use GrantType::Password;
@@ -10,6 +11,9 @@ use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
 use crate::token_exchange::route::TokenExchangeState;
 use crate::scope::Scopes;
 use crate::scope::parser::parse_scopes;
+use crate::util::value_struct::ValueStruct;
+use anyhow::Result;
+use crate::util::uuid_wrapper::UuidWrapper;
 
 #[derive(Deserialize, Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -23,28 +27,38 @@ pub struct PasswordGrantRequest {
 pub async fn handle_password_grant<A, C>(
     state: TokenExchangeState<A, C>,
     request: PasswordGrantRequest
-) -> TokenExchangeResponse
+) -> Result<TokenExchangeResponse>
 where
     A: TokenRepository<AccessToken>,
     C: ClientAuthenticator,
 {
 
     // TODO - Implement it...
+    
+    let issued_at = Utc::now();
 
     let access_token = AccessToken {
-        id: uuid::Uuid::new_v4(),
+        id: UuidWrapper::random(),
+        username: request.username,
+        client_id: request.principal.id().value().clone(),
+        scopes: request.scopes.clone().map(|s|s.0.iter().map(|scope| scope.to_string()).collect::<Vec<String>>().join(" ")).unwrap_or_else(String::new),
+        issued_at: issued_at.naive_utc(),
+        expires_at: (issued_at + Duration::hours(2)).naive_utc(),
+        not_before: (issued_at - Duration::minutes(1)).naive_utc(),
     };
 
-    state.access_token_repository.save_token(&access_token);
+    state.access_token_repository.save_token(&access_token).await?;
 
-    TokenExchangeResponse::Success {
-        access_token: access_token.id,
-        token_type: TokenType::Bearer,
-        expires_in: 7200,
-        refresh_token: Some(uuid::Uuid::new_v4()),
-        scope: request.scopes,
-        state: None,
-    }
+    Ok(
+        TokenExchangeResponse::Success {
+            access_token: access_token.id,
+            token_type: TokenType::Bearer,
+            expires_in: 7200,
+            refresh_token: Some(UuidWrapper::random()),
+            scope: request.scopes,
+            state: None,
+        }
+    )
 }
 
 pub fn validate_password_grant(principal: ClientPrincipal, request: HashMap<String, String>) -> Result<PasswordGrantRequest, TokenExchangeResponse> {

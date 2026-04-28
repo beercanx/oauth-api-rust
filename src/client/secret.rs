@@ -11,6 +11,7 @@ pub struct ClientSecret {
     pub hashed_secret: String,
 }
 
+// TODO - #[trait_variant::make(Send)]
 pub trait ClientSecretRepository: Send + Sync + Clone {
     fn find_by_id(&self, id: &Uuid) -> Option<ClientSecret>;
     fn find_all_by_client(&self, client_id: &ClientId) -> Vec<ClientSecret>;

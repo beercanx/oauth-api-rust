@@ -1,8 +1,11 @@
 diesel::table! {
     access_tokens (id) {
-        id -> Text, // TODO - Convert to UUID via DB converters
+        id -> Binary,
+        username -> Text,
         client_id -> Text,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
+        scopes -> Text,
+        issued_at -> Timestamp,
+        expires_at -> Timestamp,
+        not_before -> Timestamp,
     }
 }

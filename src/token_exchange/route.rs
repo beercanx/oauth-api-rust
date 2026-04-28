@@ -1,8 +1,9 @@
+use anyhow::Result;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{middleware, Router};
 use axum::routing::post;
-use axum::response::Json;
+use axum::response::{IntoResponse, Json};
 use middleware::from_fn_with_state;
 use crate::client::authentication::ClientAuthenticator;
 use crate::client::middleware::require_client_authentication;
@@ -33,11 +34,14 @@ pub struct TokenExchangeState<A: TokenRepository<AccessToken>, C: ClientAuthenti
 async fn token_exchange_handler<A: TokenRepository<AccessToken>, C: ClientAuthenticator>(
     State(state): State<TokenExchangeState<A, C>>,
     TokenExchangeForm(request): TokenExchangeForm,
-) -> (StatusCode, Json<TokenExchangeResponse>) {
+) -> Result<(StatusCode, Json<TokenExchangeResponse>), StatusCode> {
 
     let result = match request {
         TokenExchangeRequest::Password(password_grant_request) => {
-            handle_password_grant(state, password_grant_request).await
+            match handle_password_grant(state, password_grant_request).await { 
+                Ok(response) => response,
+                Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)?,  // TODO - Add error logging
+            }
         },
     };
 
@@ -46,7 +50,7 @@ async fn token_exchange_handler<A: TokenRepository<AccessToken>, C: ClientAuthen
         TokenExchangeResponse::Success { .. } => StatusCode::OK,
     };
 
-    (status, Json(result))
+    Ok((status, Json(result)))
 }
 
 #[cfg(test)]

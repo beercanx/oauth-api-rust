@@ -2,10 +2,10 @@ pub mod repository;
 mod schema;
 
 use serde::Serialize;
-use uuid::Uuid;
+use crate::util::uuid_wrapper::UuidWrapper;
 
-pub trait Token {
-    fn id(&self) -> Uuid;
+pub trait Token: Send + Sync + Clone {
+    fn id(&self) -> UuidWrapper;
 }
 
 #[cfg_attr(test, derive(Debug))]
@@ -17,12 +17,22 @@ pub enum TokenType {
 }
 
 #[derive(Serialize, Clone)]
+#[derive(sqlx::FromRow)]
+#[derive(diesel::Queryable, diesel::Selectable, diesel::Insertable)]
+#[diesel(table_name = schema::access_tokens)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct AccessToken {
-    pub id: Uuid
+    pub id: UuidWrapper,
+    pub username: String,                   // TODO - Use AuthenticatedUser
+    pub client_id: String,                  // TODO - Use ClientId
+    pub scopes: String,                     // TODO - Use Scopes
+    pub issued_at: chrono::NaiveDateTime,
+    pub expires_at: chrono::NaiveDateTime,
+    pub not_before: chrono::NaiveDateTime,
 }
 
 impl Token for AccessToken {
-    fn id(&self) -> Uuid {
+    fn id(&self) -> UuidWrapper {
         self.id
     }
 }

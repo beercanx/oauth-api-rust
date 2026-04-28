@@ -1,6 +1,7 @@
 use serde::Serialize;
 use crate::scope::Scopes;
 use crate::token::TokenType;
+use crate::util::uuid_wrapper::UuidWrapper;
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Serialize, Eq, PartialEq)]
@@ -10,7 +11,7 @@ pub enum TokenExchangeResponse {
     Success {
 
         // The access token issued by the authorization server.
-        access_token: uuid::Uuid,
+        access_token: UuidWrapper,
 
         // The type of the token issued as described in
         // https://www.rfc-editor.org/rfc/rfc6749#section-7.1
@@ -26,7 +27,7 @@ pub enum TokenExchangeResponse {
         // access tokens using the same authorization grant as described in
         // https://www.rfc-editor.org/rfc/rfc6749#section-6
         #[serde(skip_serializing_if = "Option::is_none")]
-        refresh_token: Option<uuid::Uuid>,
+        refresh_token: Option<UuidWrapper>,
 
         // OPTIONAL if identical to the scope requested by the client; otherwise,
         // REQUIRED. The scope of the access token as described by

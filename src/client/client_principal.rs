@@ -44,9 +44,9 @@ macro_rules! define_principal {
 
         impl $struct_name {
 
-            // pub fn id(&self) -> &crate::client::ClientId {
-            //     &self.configuration.client_id
-            // }
+            pub fn id(&self) -> &crate::client::ClientId {
+                &self.configuration.client_id
+            }
 
             pub fn can_perform_action(&self, action: &crate::client::ClientAction) -> bool {
                 self.configuration.allowed_actions.contains(action)

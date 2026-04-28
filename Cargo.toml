@@ -12,7 +12,13 @@ tokio = { version = "1.50.0", features = ["macros", "rt-multi-thread", "signal"]
 uuid = { version = "1.23.0", features = ["v4", "serde"] }
 form_urlencoded = "1.2.2"
 tower = "0.5.3"
-diesel = { version = "2.3.6", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "uuid", "r2d2"] }
+diesel = { version = "2.3.6", features = ["sqlite", "returning_clauses_for_sqlite_3_35", "r2d2", "chrono"] }
+chrono = { version = "0.4.44", features = ["serde"] }
+sqlx = { version = "0.8.6", features = [ "runtime-tokio", "sqlite", "uuid", "time", "derive", "macros" ] }
+anyhow = "1.0.102"
+thiserror = "2.0.18"
+trait-variant = "0.1.2"
+diesel_migrations = "2.3.2"
 
 [dev-dependencies]
 assertables = "9.8.6"

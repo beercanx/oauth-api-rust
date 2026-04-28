@@ -15,7 +15,7 @@ enum_with_from_str! {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 #[cfg_attr(test, derive(Debug))]
 pub struct Scopes(pub HashSet<Scope>);
 
