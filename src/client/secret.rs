@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use uuid::Uuid;
 use crate::client::ClientId;
 use crate::util::value_struct::ValueStruct;
@@ -58,7 +58,7 @@ impl InMemoryClientSecretRepository {
     }
 
     fn lock_store(&self) -> MutexGuard<'_, HashMap<Uuid, ClientSecret>> {
-        self.store.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.store.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 

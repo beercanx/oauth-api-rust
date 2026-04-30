@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use crate::client::{ClientAction, ClientId, ClientType, GrantType};
 use crate::scope::Scope;
 
@@ -53,7 +53,7 @@ impl InMemoryClientConfigurationRepository {
         (configuration.client_id.clone(), configuration)
     }
     fn lock_store(&self) -> MutexGuard<'_, HashMap<ClientId, ClientConfiguration>> {
-        self.store.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.store.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 

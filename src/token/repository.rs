@@ -2,7 +2,7 @@ use crate::token::{AccessToken, Token};
 use std::collections::HashMap;
 use std::error::Error;
 use std::marker::PhantomData;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use anyhow::{Context, Result};
 use diesel::r2d2::ConnectionManager;
 use diesel::{RunQueryDsl, SqliteConnection};
@@ -26,7 +26,7 @@ impl<T: Token> InMemoryTokenRepository<T> {
         Self { store: Arc::new(Mutex::new(HashMap::new())) }
     }
     fn lock_store(&self) -> MutexGuard<'_, HashMap<UuidWrapper, T>> {
-        self.store.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.store.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 
@@ -48,7 +48,7 @@ pub struct DieselSqliteAccessTokenRepository {
 }
 
 impl DieselSqliteAccessTokenRepository {
-    pub async fn new(database_url: &str) -> Result<DieselSqliteAccessTokenRepository> {
+    pub fn new(database_url: &str) -> Result<DieselSqliteAccessTokenRepository> {
 
         let manager = ConnectionManager::<SqliteConnection>::new(database_url);
 
@@ -61,7 +61,7 @@ impl DieselSqliteAccessTokenRepository {
             pool
         })
     }
-    pub async fn run_diesel_migrations(&self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+    pub fn run_diesel_migrations(&self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
         const ACCESS_TOKEN_MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/access_tokens");
         self.pool.get()?.run_pending_migrations(ACCESS_TOKEN_MIGRATIONS)?;

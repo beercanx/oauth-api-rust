@@ -5,7 +5,9 @@
     clippy::expect_used,
     clippy::panic,
 )]
-
+#![warn(
+    clippy::pedantic,
+)]
 mod scope;
 mod token;
 mod token_exchange;
@@ -56,10 +58,9 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     //     .await?;
 
     let access_token_repository = DieselSqliteAccessTokenRepository
-        ::new("file:target/db/access_tokens.sqlite3")
-        .await?;
+        ::new("file:target/db/access_tokens.sqlite3")?;
 
-    access_token_repository.run_diesel_migrations().await?;
+    access_token_repository.run_diesel_migrations()?;
 
     let client_secret_repository = InMemoryClientSecretRepository::new(); // "file:target/db/client_secrets.sqlite3"
     let client_configuration_repository = InMemoryClientConfigurationRepository::new(); // "file:target/db/client_configurations.sqlite3"
@@ -89,7 +90,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         .with_context(|| "Failed to get local tcp address")?;
 
     println!();
-    println!("Listening on http://{}", local_address);
+    println!("Listening on http://{local_address}");
     println!();
 
     serve(tcp_listener, application)

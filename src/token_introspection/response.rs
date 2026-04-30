@@ -17,13 +17,13 @@ pub enum TokenIntrospectionResponse {
          * and is within its given time window of validity (e.g., after its issuance time and before
          * its expiration time).
          *
-         * See Section 4 for information on implementation of such checks [https://www.rfc-editor.org/rfc/rfc7662#section-4].
+         * See Section 4 for information on implementation of such checks <https://www.rfc-editor.org/rfc/rfc7662#section-4>.
          */
         active: bool,
 
         /**
          * A JSON string containing a space-separated list of scopes associated with this token,
-         * in the format described in Section 3.3 of OAuth 2.0 [https://www.rfc-editor.org/rfc/rfc6749#section-3.3].
+         * in the format described in Section 3.3 of OAuth 2.0 <https://www.rfc-editor.org/rfc/rfc6749#section-3.3>.
          */
         #[serde(skip_serializing_if = "Option::is_none")]
         scope: Option<String>, // TODO - Use an internal type and setup serialization for it.
@@ -41,28 +41,28 @@ pub enum TokenIntrospectionResponse {
         username: Option<String>, // TODO - Use an internal value struct AuthenticatedUsername
 
         /**
-         * Type of the token as defined in Section 5.1 of OAuth 2.0 [https://www.rfc-editor.org/rfc/rfc6749#section-5.1].
+         * Type of the token as defined in Section 5.1 of OAuth 2.0 <https://www.rfc-editor.org/rfc/rfc6749#section-5.1>.
          */
         #[serde(skip_serializing_if = "Option::is_none")]
         token_type: Option<TokenType>,
 
         /**
          * Integer timestamp, measured in the number of seconds since January 1 1970 UTC,
-         * indicating when this token will expire, as defined in JWT [https://www.rfc-editor.org/rfc/rfc7519]
+         * indicating when this token will expire, as defined in JWT <https://www.rfc-editor.org/rfc/rfc7519>
          */
         #[serde(rename = "exp", skip_serializing_if = "Option::is_none")]
         expires_at: Option<i64>,
 
         /**
          * Integer timestamp, measured in the number of seconds since January 1 1970 UTC,
-         * indicating when this token was originally issued, as defined in JWT [https://www.rfc-editor.org/rfc/rfc7519]
+         * indicating when this token was originally issued, as defined in JWT <https://www.rfc-editor.org/rfc/rfc7519>
          */
         #[serde(rename = "iat", skip_serializing_if = "Option::is_none")]
         issued_at: Option<i64>,
 
         /**
          * Integer timestamp, measured in the number of seconds since January 1 1970 UTC,
-         * indicating when this token is not to be used before, as defined in JWT [https://www.rfc-editor.org/rfc/rfc7519]
+         * indicating when this token is not to be used before, as defined in JWT <https://www.rfc-editor.org/rfc/rfc7519>
          */
         #[serde(rename = "nbf", skip_serializing_if = "Option::is_none")]
         not_before: Option<i64>,
@@ -94,7 +94,7 @@ pub enum TokenIntrospectionResponse {
 #[serde(rename_all = "snake_case")]
 pub enum ErrorType {
     InvalidRequest,
-    UnauthorizedClient,
+    //UnauthorizedClient,
 }
 
 impl TokenIntrospectionResponse {
