@@ -52,15 +52,14 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     // TODO - Do we bother with services, or just continue with passing the repositories directly?
     // let access_token_repository = InMemoryTokenRepository::<AccessToken>::new();
 
-    // let access_token_repository = SqlxSqliteTokenRepository
-    //     ::<AccessToken>
-    //     ::new("file:target/db/access_tokens.sqlite3)
-    //     .await?;
+    let access_token_repository = token::repository::SqlxSqliteAccessTokenRepository
+        ::new("file:target/db/access_tokens.sqlite3")
+        .await?;
 
-    let access_token_repository = DieselSqliteAccessTokenRepository
-        ::new("file:target/db/access_tokens.sqlite3")?;
+    // let access_token_repository = DieselSqliteAccessTokenRepository
+    //     ::new("file:target/db/access_tokens.sqlite3")?;
 
-    access_token_repository.run_diesel_migrations()?;
+    //access_token_repository.run_diesel_migrations()?;
 
     let client_secret_repository = InMemoryClientSecretRepository::new(); // "file:target/db/client_secrets.sqlite3"
     let client_configuration_repository = InMemoryClientConfigurationRepository::new(); // "file:target/db/client_configurations.sqlite3"

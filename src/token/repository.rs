@@ -1,13 +1,12 @@
 use crate::token::{AccessToken, Token};
 use std::collections::HashMap;
 use std::error::Error;
-use std::marker::PhantomData;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use anyhow::{Context, Result};
 use diesel::r2d2::ConnectionManager;
 use diesel::{RunQueryDsl, SqliteConnection};
-use sqlx::{FromRow, Pool, Sqlite};
-use sqlx::sqlite::{SqlitePoolOptions, SqliteRow};
+use sqlx::{Pool, Sqlite};
+use sqlx::sqlite::SqlitePoolOptions;
 use crate::util::uuid_wrapper::UuidWrapper;
 
 #[trait_variant::make(Send)]
@@ -55,7 +54,7 @@ impl DieselSqliteAccessTokenRepository {
         let pool = diesel::r2d2::Pool::builder()
             .test_on_check_out(true)
             .build(manager)
-            .with_context(|| format!("Failed to create Diesel sqlite database pool: {}", database_url))?;
+            .with_context(|| format!("Failed to create Diesel sqlite database pool: {database_url}"))?;
 
         Ok(Self {
             pool
@@ -73,7 +72,7 @@ impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
 
     async fn get_token(&self, token: UuidWrapper) -> Result<Option<AccessToken>> {
         use super::schema::access_tokens;
-        use super::schema::access_tokens::dsl::*;
+        use super::schema::access_tokens::dsl::id;
         use diesel::prelude::*;
 
         let connection = &mut self.pool.get()
@@ -90,7 +89,7 @@ impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
 
     async fn save_token(&self, token: &AccessToken) -> Result<()> {
 
-        use super::schema::access_tokens::dsl::*;
+        use super::schema::access_tokens::dsl::access_tokens;
         use diesel::dsl::insert_into;
 
         let connection = &mut self.pool.get()
@@ -106,42 +105,57 @@ impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
 }
 
 #[derive(Clone)]
-pub struct SqlxSqliteTokenRepository<T: Token> {
-    _token_type: PhantomData<T>,
+pub struct SqlxSqliteAccessTokenRepository {
     pool: Pool<Sqlite>,
 }
 
-impl<T: Token> SqlxSqliteTokenRepository<T> {
-    pub async fn new(database_url: &str) -> Result<SqlxSqliteTokenRepository<T>> {
+impl SqlxSqliteAccessTokenRepository {
+    pub async fn new(database_url: &str) -> Result<SqlxSqliteAccessTokenRepository> {
         Ok(
             Self {
-                _token_type: PhantomData,
                 pool: SqlitePoolOptions::new()
                     .min_connections(1)
                     .max_connections(5)
                     .connect(database_url)
                     .await
                     .with_context(||
-                        format!("Failed to create SQLX sqlite database pool: {}", database_url)
+                        format!("Failed to create SQLX sqlite database pool: {database_url}")
                     )?
             }
         )
     }
 }
 
-impl<T: Token + Unpin + for<'r> FromRow<'r, SqliteRow>> TokenRepository<T> for SqlxSqliteTokenRepository<T> {
+impl TokenRepository<AccessToken> for SqlxSqliteAccessTokenRepository {
 
-    async fn get_token(&self, token: UuidWrapper) -> Result<Option<T>> {
+    async fn get_token(&self, token: UuidWrapper) -> Result<Option<AccessToken>> {
 
-        let result = sqlx::query_as::<Sqlite, T>("SELECT * FROM access_tokens WHERE id = ?")
+        let result = sqlx::query_as::<_, AccessToken>("SELECT * FROM access_tokens WHERE id = ?;")
             .bind(token)
             .fetch_optional(&self.pool)
-            .await?;
+            .await
+            .with_context(|| "Error querying access token database")?;
 
         Ok(result)
     }
 
-    async fn save_token(&self, token: &T) -> Result<()> {
-        todo!()
+    async fn save_token(&self, token: &AccessToken) -> Result<()> {
+
+        sqlx::query("
+            INSERT INTO access_tokens (id, username, client_id, scopes, issued_at, expires_at, not_before)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
+        ")
+            .bind(token.id)
+            .bind(&token.username)
+            .bind(&token.client_id)
+            .bind(&token.scopes)
+            .bind(token.issued_at)
+            .bind(token.expires_at)
+            .bind(token.not_before)
+            .execute(&self.pool)
+            .await
+            .with_context(|| "Error saving access token to database")?;
+
+        Ok(())
     }
 }
