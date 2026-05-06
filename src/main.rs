@@ -22,7 +22,6 @@ use tokio::net::TcpListener;
 use client::authentication::ClientAuthenticationService;
 use client::configuration::InMemoryClientConfigurationRepository;
 use client::secret::InMemoryClientSecretRepository;
-use token::repository::DieselSqliteAccessTokenRepository;
 use token_exchange::TokenExchangeState;
 use token_introspection::TokenIntrospectionState;
 
@@ -49,17 +48,26 @@ use anyhow::{Context, Result};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
 
-    // TODO - Do we bother with services, or just continue with passing the repositories directly?
-    // let access_token_repository = InMemoryTokenRepository::<AccessToken>::new();
+    // TODO - Do we bother with services?
+    //        or just continue with passing the repositories directly?
+    //        or do we just pass connection pools and do await with services and repositories?
 
+    #[cfg(not(any(feature = "diesel", feature = "sqlx")))]
+    let access_token_repository = token::repository::InMemoryTokenRepository
+        ::<token::AccessToken>
+        ::new();
+
+    #[cfg(feature = "sqlx")]
     let access_token_repository = token::repository::SqlxSqliteAccessTokenRepository
         ::new("file:target/db/access_tokens.sqlite3")
         .await?;
 
-    // let access_token_repository = DieselSqliteAccessTokenRepository
-    //     ::new("file:target/db/access_tokens.sqlite3")?;
+    #[cfg(feature = "diesel")]
+    let access_token_repository = token::repository::DieselSqliteAccessTokenRepository
+        ::new("file:target/db/access_tokens.sqlite3")?;
 
-    //access_token_repository.run_diesel_migrations()?;
+    #[cfg(feature = "diesel")]
+    access_token_repository.run_diesel_migrations().await?;
 
     let client_secret_repository = InMemoryClientSecretRepository::new(); // "file:target/db/client_secrets.sqlite3"
     let client_configuration_repository = InMemoryClientConfigurationRepository::new(); // "file:target/db/client_configurations.sqlite3"

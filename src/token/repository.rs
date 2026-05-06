@@ -1,13 +1,24 @@
-use crate::token::{AccessToken, Token};
+use crate::token::Token;
 use std::collections::HashMap;
-use std::error::Error;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use anyhow::{Context, Result};
-use diesel::r2d2::ConnectionManager;
-use diesel::{RunQueryDsl, SqliteConnection};
-use sqlx::{Pool, Sqlite};
-use sqlx::sqlite::SqlitePoolOptions;
+use anyhow::Result;
 use crate::util::uuid_wrapper::UuidWrapper;
+
+#[cfg(any(feature = "diesel", feature = "sqlx"))]
+use {
+    crate::token::AccessToken,
+    anyhow::Context,
+};
+
+#[cfg(feature = "diesel")]
+use {
+    std::error::Error,
+    diesel::prelude::*,
+    diesel_async::RunQueryDsl,
+    diesel_async::pooled_connection::AsyncDieselConnectionManager,
+    diesel_async::pooled_connection::deadpool::Pool,
+    diesel_async::sync_connection_wrapper::SyncConnectionWrapper,
+};
 
 #[trait_variant::make(Send)]
 pub trait TokenRepository<T: Token>: Sync + Clone {
@@ -41,46 +52,65 @@ impl<T: Token> TokenRepository<T> for InMemoryTokenRepository<T>
     }
 }
 
+#[cfg(feature = "diesel")]
+type AsyncSqliteConnection = SyncConnectionWrapper<SqliteConnection>;
+#[cfg(feature = "diesel")]
+type AsyncSqlitePool = Pool<AsyncSqliteConnection>;
+
 #[derive(Clone)]
+#[cfg(feature = "diesel")]
 pub struct DieselSqliteAccessTokenRepository {
-    pool: diesel::r2d2::Pool<ConnectionManager<SqliteConnection>>,
+    pool: AsyncSqlitePool,
 }
 
+#[cfg(feature = "diesel")]
 impl DieselSqliteAccessTokenRepository {
     pub fn new(database_url: &str) -> Result<DieselSqliteAccessTokenRepository> {
 
-        let manager = ConnectionManager::<SqliteConnection>::new(database_url);
+        let manager = AsyncDieselConnectionManager::<AsyncSqliteConnection>::new(database_url);
 
-        let pool = diesel::r2d2::Pool::builder()
-            .test_on_check_out(true)
-            .build(manager)
+        let pool = AsyncSqlitePool::builder(manager)
+            .max_size(5)
+            .build()
             .with_context(|| format!("Failed to create Diesel sqlite database pool: {database_url}"))?;
 
         Ok(Self {
             pool
         })
     }
-    pub fn run_diesel_migrations(&self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+    pub async fn run_diesel_migrations(&self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+        use diesel_async::AsyncMigrationHarness;
         use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
         const ACCESS_TOKEN_MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/access_tokens");
-        self.pool.get()?.run_pending_migrations(ACCESS_TOKEN_MIGRATIONS)?;
+
+        let connection = self.pool
+            .get()
+            .await
+            .with_context(|| "Failed to get connection from pool")?;
+
+        let mut harness = AsyncMigrationHarness::new(connection);
+
+        harness.run_pending_migrations(ACCESS_TOKEN_MIGRATIONS)?;
+
         Ok(())
     }
 }
 
+#[cfg(feature = "diesel")]
 impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
 
     async fn get_token(&self, token: UuidWrapper) -> Result<Option<AccessToken>> {
         use super::schema::access_tokens;
         use super::schema::access_tokens::dsl::id;
-        use diesel::prelude::*;
 
         let connection = &mut self.pool.get()
+            .await
             .with_context(|| "Failed to get connection from pool")?;
 
         let result = access_tokens::table
             .filter(id.eq(token))
             .first::<AccessToken>(connection)
+            .await
             .optional()
             .with_context(|| "Error querying access token database")?;
 
@@ -91,13 +121,16 @@ impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
 
         use super::schema::access_tokens::dsl::access_tokens;
         use diesel::dsl::insert_into;
+        use diesel_async::RunQueryDsl;
 
         let connection = &mut self.pool.get()
+            .await
             .with_context(|| "Failed to get connection from pool")?;
 
         insert_into(access_tokens)
             .values(token)
             .execute(connection)
+            .await
             .with_context(|| "Error saving access token to database")?;
 
         Ok(())
@@ -105,15 +138,17 @@ impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
 }
 
 #[derive(Clone)]
+#[cfg(feature = "sqlx")]
 pub struct SqlxSqliteAccessTokenRepository {
-    pool: Pool<Sqlite>,
+    pool: sqlx::Pool<sqlx::Sqlite>,
 }
 
+#[cfg(feature = "sqlx")]
 impl SqlxSqliteAccessTokenRepository {
     pub async fn new(database_url: &str) -> Result<SqlxSqliteAccessTokenRepository> {
         Ok(
             Self {
-                pool: SqlitePoolOptions::new()
+                pool: sqlx::sqlite::SqlitePoolOptions::new()
                     .min_connections(1)
                     .max_connections(5)
                     .connect(database_url)
@@ -126,6 +161,7 @@ impl SqlxSqliteAccessTokenRepository {
     }
 }
 
+#[cfg(feature = "sqlx")]
 impl TokenRepository<AccessToken> for SqlxSqliteAccessTokenRepository {
 
     async fn get_token(&self, token: UuidWrapper) -> Result<Option<AccessToken>> {

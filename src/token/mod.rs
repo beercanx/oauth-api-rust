@@ -1,4 +1,5 @@
 pub mod repository;
+#[cfg(feature = "diesel")]
 mod schema;
 
 use serde::Serialize;
@@ -17,10 +18,10 @@ pub enum TokenType {
 }
 
 #[derive(Serialize, Clone)]
-#[derive(sqlx::FromRow)]
-#[derive(diesel::Queryable, diesel::Selectable, diesel::Insertable)]
-#[diesel(table_name = schema::access_tokens)]
-#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
+#[cfg_attr(feature = "diesel", derive(diesel::Queryable, diesel::Selectable, diesel::Insertable))]
+#[cfg_attr(feature = "diesel", diesel(table_name = schema::access_tokens))]
+#[cfg_attr(feature = "diesel", diesel(check_for_backend(diesel::sqlite::Sqlite)))]
 pub struct AccessToken {
     pub id: UuidWrapper,
     pub username: String,                   // TODO - Use AuthenticatedUser

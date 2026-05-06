@@ -14,8 +14,8 @@ macro_rules! value_struct {
         #[derive(Clone, Hash, Eq, PartialEq)]
         #[derive(serde::Serialize)]
         #[serde(transparent)]
-        #[derive(sqlx::Type)]
-        #[sqlx(transparent)]
+        #[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
+        #[cfg_attr(feature = "sqlx", sqlx(transparent))]
         #[cfg_attr(test, derive(Debug))]
         $vis struct $struct_name($field_type);
 
