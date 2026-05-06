@@ -1,12 +1,15 @@
-use crate::token::Token;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use crate::token::AccessToken;
 use anyhow::Result;
 use crate::util::uuid_wrapper::UuidWrapper;
 
+#[cfg(any(test, not(any(feature = "diesel", feature = "sqlx"))))]
+use {
+    std::collections::HashMap,
+    std::sync::{Arc, Mutex, MutexGuard, PoisonError},
+};
+
 #[cfg(any(feature = "diesel", feature = "sqlx"))]
 use {
-    crate::token::AccessToken,
     anyhow::Context,
 };
 
@@ -21,33 +24,36 @@ use {
 };
 
 #[trait_variant::make(Send)]
-pub trait TokenRepository<T: Token>: Sync + Clone {
+pub trait TokenRepository<T>: Sync + Clone {
     async fn get_token(&self, id: UuidWrapper) -> Result<Option<T>>;
     async fn save_token(&self, token: &T) -> Result<()>;
 }
 
 #[derive(Clone, Default)]
-pub struct InMemoryTokenRepository<T: Token> {
-    store: Arc<Mutex<HashMap<UuidWrapper, T>>>,
+#[cfg(any(test, not(any(feature = "diesel", feature = "sqlx"))))]
+pub struct InMemoryAccessTokenRepository {
+    store: Arc<Mutex<HashMap<UuidWrapper, AccessToken>>>,
 }
 
-impl<T: Token> InMemoryTokenRepository<T> {
+#[cfg(any(test, not(any(feature = "diesel", feature = "sqlx"))))]
+impl InMemoryAccessTokenRepository {
     pub fn new() -> Self {
         Self { store: Arc::new(Mutex::new(HashMap::new())) }
     }
-    fn lock_store(&self) -> MutexGuard<'_, HashMap<UuidWrapper, T>> {
+    fn lock_store(&self) -> MutexGuard<'_, HashMap<UuidWrapper, AccessToken>> {
         self.store.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 
-impl<T: Token> TokenRepository<T> for InMemoryTokenRepository<T>
+#[cfg(any(test, not(any(feature = "diesel", feature = "sqlx"))))]
+impl TokenRepository<AccessToken> for InMemoryAccessTokenRepository
 {
-    async fn get_token(&self, id: UuidWrapper) -> Result<Option<T>> {
+    async fn get_token(&self, id: UuidWrapper) -> Result<Option<AccessToken>> {
         Ok(self.lock_store().get(&id).cloned())
     }
 
-    async fn save_token(&self, token: &T) -> Result<()> {
-        self.lock_store().insert(token.id(), token.clone());
+    async fn save_token(&self, token: &AccessToken) -> Result<()> {
+        self.lock_store().insert(token.id, token.clone());
         Ok(())
     }
 }

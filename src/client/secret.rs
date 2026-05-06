@@ -6,15 +6,15 @@ use crate::util::value_struct::ValueStruct;
 
 #[derive(Clone)]
 pub struct ClientSecret {
-    pub id: Uuid,
+    //pub id: Uuid,
     pub client_id: ClientId,
     pub hashed_secret: String,
 }
 
 // TODO - #[trait_variant::make(Send)]
 pub trait ClientSecretRepository: Send + Sync + Clone {
-    fn find_by_id(&self, id: &Uuid) -> Option<ClientSecret>;
-    fn find_all_by_client(&self, client_id: &ClientId) -> Vec<ClientSecret>;
+    //fn find_by_id(&self, id: &Uuid) -> Option<ClientSecret>;
+    //fn find_all_by_client(&self, client_id: &ClientId) -> Vec<ClientSecret>;
     fn find_all_by_client_id(&self, client_id: &str) -> Vec<ClientSecret>;
 }
 
@@ -51,7 +51,7 @@ impl InMemoryClientSecretRepository {
         let client_secret_id = Uuid::new_v4();
 
         (client_secret_id, ClientSecret {
-            id: client_secret_id,
+            //id: client_secret_id,
             client_id: ClientId(String::from(client_id)),
             hashed_secret: hashed
         })
@@ -63,12 +63,12 @@ impl InMemoryClientSecretRepository {
 }
 
 impl ClientSecretRepository for InMemoryClientSecretRepository {
-    fn find_by_id(&self, id: &Uuid) -> Option<ClientSecret> {
-        self.lock_store().get(id).cloned()
-    }
-    fn find_all_by_client(&self, client_id: &ClientId) -> Vec<ClientSecret> {
-        self.lock_store().values().filter(|secret| &secret.client_id == client_id).cloned().collect()
-    }
+    // fn find_by_id(&self, id: &Uuid) -> Option<ClientSecret> {
+    //     self.lock_store().get(id).cloned()
+    // }
+    // fn find_all_by_client(&self, client_id: &ClientId) -> Vec<ClientSecret> {
+    //     self.lock_store().values().filter(|secret| &secret.client_id == client_id).cloned().collect()
+    // }
     fn find_all_by_client_id(&self, client_id: &str) -> Vec<ClientSecret> {
         self.lock_store().values().filter(|secret| secret.client_id.value() == client_id).cloned().collect()
     }

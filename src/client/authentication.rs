@@ -45,10 +45,7 @@ where
 
         let maybe_secret = secrets.iter()
             .find(|secret| {
-                let hash = match PasswordHash::new(&secret.hashed_secret) {
-                    Err(_) => return false,
-                    Ok(hash) => hash,
-                };
+                let Ok(hash) = PasswordHash::new(&secret.hashed_secret) else { return false };
                 Argon2::default().verify_password(client_secret, &hash).is_ok()
             });
 

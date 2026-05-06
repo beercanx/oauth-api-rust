@@ -51,11 +51,8 @@ pub async fn require_client_authentication<C: ClientAuthenticator>(
         .map(|(_, v)| v.into_owned());
 
     let principal = match (maybe_basic_auth, maybe_client_id) {
-        // Both are present → reject per RFC 6749 §2.3
-        (Some(_), Some(_)) => return Err(StatusCode::UNAUTHORIZED),
-
-        // Neither is present → reject
-        (None, None) => return Err(StatusCode::UNAUTHORIZED),
+        // Both are present → reject per RFC 6749 §2.3; or neither is present → reject
+        (Some(_), Some(_)) | (None, None) => return Err(StatusCode::UNAUTHORIZED),
 
         // Confidential client via Basic auth
         (Some(TypedHeader(Authorization(basic))), None) => {

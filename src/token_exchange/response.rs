@@ -88,13 +88,13 @@ pub enum ErrorType {
     // authorization server MUST respond with an HTTP 401 (Unauthorized) status code
     // and include the "WWW-Authenticate" response header field matching the
     // authentication scheme used by the client.
-    InvalidClient,
+    // TODO - InvalidClient,
 
     // The provided authorization grant (e.g., authorization code,
     // resource owner credentials) or refresh token is invalid, expired, revoked,
     // does not match the redirection URI used in the authorization request, or was
     // issued to another client.
-    InvalidGrant,
+    // TODO - InvalidGrant,
 
     // The requested scope is invalid, unknown, malformed, or exceeds
     // the scope granted by the resource owner.

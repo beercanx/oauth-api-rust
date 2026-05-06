@@ -44,7 +44,7 @@ pub struct TokenIntrospectionState<A: TokenRepository<AccessToken>, C: ClientAut
 
 async fn token_introspection_handler<A: TokenRepository<AccessToken>, C: ClientAuthenticator>(
     State(state): State<TokenIntrospectionState<A, C>>,
-    Extension(client): Extension<ConfidentialClient>,
+    Extension(_client): Extension<ConfidentialClient>,
     TokenIntrospectionForm(request): TokenIntrospectionForm,
 ) -> Result<impl IntoResponse, StatusCode> {
 

@@ -19,7 +19,7 @@ macro_rules! value_struct {
         #[cfg_attr(test, derive(Debug))]
         $vis struct $struct_name($field_type);
 
-        impl crate::util::value_struct::ValueStruct for $struct_name {
+        impl $crate::util::value_struct::ValueStruct for $struct_name {
             type ValueType = $field_type;
 
             #[inline]

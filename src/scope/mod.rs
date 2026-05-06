@@ -23,7 +23,7 @@ impl Serialize for Scopes {
     // Serialize scopes as a space delimited list
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.0.iter()
-            .map(|scope| scope.to_string())
+            .map(ToString::to_string)
             .collect::<Vec<String>>()
             .join(" ")
             .serialize(serializer)

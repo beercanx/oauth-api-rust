@@ -53,8 +53,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     //        or do we just pass connection pools and do await with services and repositories?
 
     #[cfg(not(any(feature = "diesel", feature = "sqlx")))]
-    let access_token_repository = token::repository::InMemoryTokenRepository
-        ::<token::AccessToken>
+    let access_token_repository = token::repository::InMemoryAccessTokenRepository
         ::new();
 
     #[cfg(feature = "sqlx")]

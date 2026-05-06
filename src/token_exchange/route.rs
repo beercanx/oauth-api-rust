@@ -3,7 +3,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{middleware, Router};
 use axum::routing::post;
-use axum::response::{IntoResponse, Json};
+use axum::response::Json;
 use middleware::from_fn_with_state;
 use crate::client::authentication::ClientAuthenticator;
 use crate::client::middleware::require_client_authentication;
@@ -78,7 +78,7 @@ mod integration_tests {
     macro_rules! under_test {
         () => {
             route(TokenExchangeState {
-                access_token_repository: crate::token::repository::InMemoryTokenRepository::new(),
+                access_token_repository: crate::token::repository::InMemoryAccessTokenRepository::new(),
                 client_authenticator: crate::client::authentication::ClientAuthenticationService::new(
                     crate::client::secret::InMemoryClientSecretRepository::new(),
                     crate::client::configuration::InMemoryClientConfigurationRepository::new(),

@@ -40,8 +40,8 @@ where
             }))?;
 
         match Form::<HashMap<String, String>>::from_request(req, state).await {
-            Err(rejection) => Err(handle_form_rejection(rejection)),
-            Ok(Form(request)) => match validate_grant_type(principal, request) {
+            Err(rejection) => Err(handle_form_rejection(&rejection)),
+            Ok(Form(request)) => match validate_grant_type(principal, &request) {
                 Err(failure) => Err(handle_validation_failure(failure)),
                 Ok(valid) => Ok(valid),
             }
@@ -49,7 +49,7 @@ where
     }
 }
 
-pub fn validate_grant_type(principal: ClientPrincipal, request: HashMap<String, String>) -> Result<TokenExchangeForm, TokenExchangeResponse> {
+pub fn validate_grant_type(principal: ClientPrincipal, request: &HashMap<String, String>) -> Result<TokenExchangeForm, TokenExchangeResponse> {
     match request.get("grant_type").map(|s| s.parse::<GrantType>()) {
 
         None => Err(TokenExchangeResponse::missing_parameter("grant_type")),
@@ -64,7 +64,7 @@ pub fn validate_grant_type(principal: ClientPrincipal, request: HashMap<String, 
         Some(Ok(grant_type)) if !principal.can_perform_grant_type(&grant_type) => Err(
             TokenExchangeResponse::Failure {
                 error: ErrorType::UnauthorizedClient,
-                error_description: Some(format!("not authorized to: {:?}", grant_type)),
+                error_description: Some(format!("not authorized to: {grant_type:?}")),
             }
         ),
 
@@ -78,7 +78,7 @@ fn handle_validation_failure(failure: TokenExchangeResponse) -> Response {
     (StatusCode::BAD_REQUEST, Json(failure)).into_response()
 }
 
-fn handle_form_rejection(rejection: FormRejection) -> Response {
+fn handle_form_rejection(rejection: &FormRejection) -> Response {
     (rejection.status(), Json(TokenExchangeResponse::Failure {
         error: ErrorType::InvalidRequest,
         error_description: Some(rejection.body_text()),
@@ -123,14 +123,14 @@ mod unit_tests {
     validate_err! {
         should_return_invalid_request_on_missing_grant_type,
         ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! {},
+        &input_parameters! {},
         TokenExchangeResponse::missing_parameter("grant_type")
     }
 
     validate_err! {
         should_return_invalid_request_on_blank_grant_type,
         ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "grant_type" => " " },
+        &input_parameters! { "grant_type" => " " },
         TokenExchangeResponse::Failure {
             error: ErrorType::UnsupportedGrantType,
             error_description: Some("unsupported:  ".into())
@@ -140,7 +140,7 @@ mod unit_tests {
     validate_err! {
         should_return_invalid_request_on_unsupported_grant_type,
         ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "grant_type" => "aardvark" },
+        &input_parameters! { "grant_type" => "aardvark" },
         TokenExchangeResponse::Failure {
             error: ErrorType::UnsupportedGrantType,
             error_description: Some("unsupported: aardvark".into())
@@ -157,7 +157,7 @@ mod unit_tests {
             allowed_actions: Default::default(),
             allowed_grant_types: Default::default(),
         }),
-        input_parameters! { "grant_type" => "password" },
+        &input_parameters! { "grant_type" => "password" },
         TokenExchangeResponse::Failure {
             error: ErrorType::UnauthorizedClient,
             error_description: Some("not authorized to: Password".into())
@@ -167,7 +167,7 @@ mod unit_tests {
     validate_ok! {
         should_return_valid_request_for_password_grant_type,
         ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "grant_type" => "password", "username" => "aardvark", "password" => "" },
+        &input_parameters! { "grant_type" => "password", "username" => "aardvark", "password" => "" },
         TokenExchangeForm(Password(PasswordGrantRequest {
             principal: ClientPrincipal::new_confidential_client("aardvark"),
             username: "aardvark".into(),

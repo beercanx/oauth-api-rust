@@ -42,6 +42,7 @@ macro_rules! define_principal {
             configuration: crate::client::configuration::ClientConfiguration,
         }
 
+        #[allow(dead_code)] // TODO - Remove once more is implemented
         impl $struct_name {
 
             pub fn id(&self) -> &crate::client::ClientId {
@@ -60,9 +61,9 @@ macro_rules! define_principal {
                 self.configuration.allowed_scopes.contains(scope)
             }
 
-            // pub fn has_redirect_uri(&self, redirect_uri: &str) -> bool {
-            //     self.configuration.redirect_uris.contains(redirect_uri)
-            // }
+            pub fn has_redirect_uri(&self, redirect_uri: &str) -> bool {
+                self.configuration.redirect_uris.contains(redirect_uri)
+            }
         }
 
         disable_deserialization!($struct_name);

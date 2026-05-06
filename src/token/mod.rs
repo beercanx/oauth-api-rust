@@ -5,10 +5,6 @@ mod schema;
 use serde::Serialize;
 use crate::util::uuid_wrapper::UuidWrapper;
 
-pub trait Token: Send + Sync + Clone {
-    fn id(&self) -> UuidWrapper;
-}
-
 #[cfg_attr(test, derive(Debug))]
 #[derive(Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -30,10 +26,4 @@ pub struct AccessToken {
     pub issued_at: chrono::NaiveDateTime,
     pub expires_at: chrono::NaiveDateTime,
     pub not_before: chrono::NaiveDateTime,
-}
-
-impl Token for AccessToken {
-    fn id(&self) -> UuidWrapper {
-        self.id
-    }
 }
