@@ -112,6 +112,21 @@ impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
 }
 
 #[cfg(test)]
+pub mod test_support {
+    use anyhow::anyhow;
+    use super::*;
+    impl DieselSqliteAccessTokenRepository {
+        pub async fn new_in_memory() -> Result<DieselSqliteAccessTokenRepository> {
+            let database = DieselSqliteAccessTokenRepository::new(":memory:")?;
+            match database.run_diesel_migrations().await {
+                Ok(()) => Ok(database),
+                Err(e) => Err(anyhow!("Failed to run migrations: {e}")),
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 mod unit_tests {
 
     use super::*;
@@ -125,15 +140,9 @@ mod unit_tests {
         }
     }
 
-    async fn under_test() -> DieselSqliteAccessTokenRepository {
-        let db = assert_ok!(DieselSqliteAccessTokenRepository::new(":memory:"));
-        assert_ok!(db.run_diesel_migrations().await);
-        db
-    }
-
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_save_and_retrieve_a_token() {
-        let under_test = under_test().await;
+        let under_test = assert_ok!(DieselSqliteAccessTokenRepository::new_in_memory().await);
         let token = AccessToken::new();
         assert_ok!(under_test.save_token(&token).await);
         assert_eq!(assert_some!(assert_ok!(under_test.get_token(token.id).await)), token);
@@ -141,7 +150,7 @@ mod unit_tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_delete_a_token() {
-        let under_test = under_test().await;
+        let under_test = assert_ok!(DieselSqliteAccessTokenRepository::new_in_memory().await);
         let token = AccessToken::new();
         assert_ok!(under_test.save_token(&token).await);
         assert_ok!(under_test.delete_token(token.id).await);
@@ -150,13 +159,13 @@ mod unit_tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_delete_a_token_when_non_existent() {
-        let under_test = under_test().await;
+        let under_test = assert_ok!(DieselSqliteAccessTokenRepository::new_in_memory().await);
         assert_ok!(under_test.delete_token(UuidWrapper::random()).await);
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_clone_but_share_storage() {
-        let first = under_test().await;
+        let first = assert_ok!(DieselSqliteAccessTokenRepository::new_in_memory().await);
         let second = first.clone();
         let token = AccessToken::new();
         assert_ok!(first.save_token(&token).await);

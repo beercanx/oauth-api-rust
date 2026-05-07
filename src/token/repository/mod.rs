@@ -1,4 +1,4 @@
-#[cfg(any(test, not(feature = "diesel")))]
+#[cfg(not(feature = "diesel"))]
 pub mod memory;
 
 #[cfg(feature = "diesel")]

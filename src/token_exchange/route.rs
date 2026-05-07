@@ -78,7 +78,7 @@ mod integration_tests {
     macro_rules! under_test {
         () => {
             route(TokenExchangeState {
-                access_token_repository: crate::token::repository::memory::InMemoryAccessTokenRepository::new(),
+                access_token_repository: assert_ok!(crate::token::repository::diesel::DieselSqliteAccessTokenRepository::new_in_memory().await),
                 client_authenticator: crate::client::authentication::ClientAuthenticationService::new(
                     crate::client::secret::InMemoryClientSecretRepository::new(),
                     crate::client::configuration::InMemoryClientConfigurationRepository::new(),
@@ -102,7 +102,7 @@ mod integration_tests {
         macro_rules! http_method_test {
             ($($name:ident: $method:expr,)*) => {
             $(
-                #[tokio::test]
+                #[tokio::test(flavor = "multi_thread")]
                 async fn $name() {
                     let router = under_test!();
 
@@ -132,7 +132,7 @@ mod integration_tests {
             should_not_support_http_method_connect: Method::CONNECT,
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_require_client_authentication_on_missing_authorization_header() {
             let router = under_test!();
 
@@ -149,7 +149,7 @@ mod integration_tests {
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_require_client_authentication_on_invalid_confidential_client_credentials() {
             let router = under_test!();
 
@@ -167,7 +167,7 @@ mod integration_tests {
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_require_client_authentication_on_invalid_public_client_credentials() {
             let router = under_test!();
 
@@ -184,7 +184,7 @@ mod integration_tests {
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_require_client_authentication_via_only_one_method() {
             let router = under_test!();
 
@@ -205,7 +205,7 @@ mod integration_tests {
         macro_rules! content_type_test {
             ($($name:ident: $value:expr,)*) => {
             $(
-                #[tokio::test]
+                #[tokio::test(flavor = "multi_thread")]
                 async fn $name() {
                     let router = under_test!();
 
@@ -237,7 +237,7 @@ mod integration_tests {
     mod invalid_token_request {
         use super::*;
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_return_bad_request_for_invalid_token_exchange_requests() {
 
             let router = under_test!();
@@ -264,7 +264,7 @@ mod integration_tests {
     mod success_token_request {
         use super::*;
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_return_ok_for_valid_password_grants() {
             let router = under_test!();
 
@@ -288,7 +288,7 @@ mod integration_tests {
             assert_none!(body.get("state"));
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         #[ignore = "authorization code not yet implemented"] // TODO - Re-enable once implemented
         async fn should_return_ok_for_valid_authorization_code_grants() {
             let router = under_test!();
@@ -312,7 +312,7 @@ mod integration_tests {
             assert_some_eq_x!(body.get("scope"), "basic");
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         #[ignore = "refresh grant not yet implemented"] // TODO - Re-enable once implemented
         async fn should_return_ok_for_valid_refresh_token_grant() {
             let router = under_test!();
@@ -336,7 +336,7 @@ mod integration_tests {
             assert_some_eq_x!(body.get("scope"), "basic");
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         #[ignore = "assertion grant not yet implemented"] // TODO - Re-enable once implemented
         async fn should_return_ok_for_valid_assertion_grant() {
             let router = under_test!();
