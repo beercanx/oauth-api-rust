@@ -1,8 +1,5 @@
-#[cfg(any(test, not(any(feature = "diesel", feature = "sqlx"))))]
+#[cfg(any(test, not(feature = "diesel")))]
 pub mod memory;
-
-#[cfg(feature = "sqlx")]
-pub mod sqlx;
 
 #[cfg(feature = "diesel")]
 pub mod diesel;

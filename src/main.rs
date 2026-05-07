@@ -52,14 +52,9 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     //        or just continue with passing the repositories directly?
     //        or do we just pass connection pools and do await with services and repositories?
 
-    #[cfg(not(any(feature = "diesel", feature = "sqlx")))]
+    #[cfg(not(feature = "diesel"))]
     let access_token_repository = token::repository::memory::InMemoryAccessTokenRepository
         ::new();
-
-    #[cfg(feature = "sqlx")]
-    let access_token_repository = token::repository::sqlx::SqlxSqliteAccessTokenRepository
-        ::new("file:target/db/access_tokens.sqlite3")
-        .await?;
 
     #[cfg(feature = "diesel")]
     let access_token_repository = token::repository::diesel::DieselSqliteAccessTokenRepository

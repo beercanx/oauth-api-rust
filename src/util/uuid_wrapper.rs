@@ -12,8 +12,6 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 #[derive(serde::Serialize)]
 #[serde(transparent)]
-#[cfg_attr(feature = "sqlx", derive(sqlx::Type))]
-#[cfg_attr(feature = "sqlx", sqlx(transparent))]
 #[cfg_attr(feature = "diesel", derive(diesel::FromSqlRow, diesel::AsExpression))]
 #[cfg_attr(feature = "diesel", diesel(sql_type = diesel::sql_types::Binary))]
 pub struct UuidWrapper(pub Uuid);

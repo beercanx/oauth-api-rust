@@ -15,7 +15,6 @@ pub enum TokenType {
 
 #[derive(Serialize, Clone, Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
-#[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 #[cfg_attr(feature = "diesel", derive(diesel::Queryable, diesel::Selectable, diesel::Insertable, diesel::Identifiable))]
 #[cfg_attr(feature = "diesel", diesel(table_name = schema::access_tokens))]
 #[cfg_attr(feature = "diesel", diesel(check_for_backend(diesel::sqlite::Sqlite)))]

@@ -80,6 +80,5 @@ curl -v -X POST -H 'Content-Type: application/x-www-form-urlencoded' -u 'aardvar
 * https://docs.rs/tower/latest/tower
 * https://crates.io/crates/anyhow
 * https://crates.io/crates/thiserror
-* https://github.com/launchbadge/sqlx
 * https://docs.diesel.rs/2.0.x/diesel/index.html
 * https://obito.fr/posts/2022/12/use-uuid-in-sqlite-database-with-rust-diesel.rs/
