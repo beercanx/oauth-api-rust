@@ -1253,6 +1253,7 @@ dependencies = [
  "diesel_migrations",
  "form_urlencoded",
  "http-body-util",
+ "libsqlite3-sys",
  "serde",
  "serde_json",
  "sqlx",

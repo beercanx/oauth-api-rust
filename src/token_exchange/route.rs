@@ -78,7 +78,7 @@ mod integration_tests {
     macro_rules! under_test {
         () => {
             route(TokenExchangeState {
-                access_token_repository: crate::token::repository::InMemoryAccessTokenRepository::new(),
+                access_token_repository: crate::token::repository::memory::InMemoryAccessTokenRepository::new(),
                 client_authenticator: crate::client::authentication::ClientAuthenticationService::new(
                     crate::client::secret::InMemoryClientSecretRepository::new(),
                     crate::client::configuration::InMemoryClientConfigurationRepository::new(),
