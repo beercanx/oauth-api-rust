@@ -15,8 +15,8 @@ mod token_introspection;
 mod graceful_shutdown;
 mod client;
 mod util;
+mod schema;
 
-use std::error::Error;
 use axum::{serve, Router};
 use tokio::net::TcpListener;
 use client::authentication::ClientAuthenticationService;
@@ -26,6 +26,9 @@ use token_exchange::TokenExchangeState;
 use token_introspection::TokenIntrospectionState;
 
 use anyhow::{Context, Result};
+use token::repository::diesel::DieselAccessTokenRepository;
+use crate::util::diesel_migrations::run_diesel_migrations;
+use crate::util::diesel_pool::create_pool;
 
 // TODO List:
 //  - Token endpoint
@@ -46,25 +49,20 @@ use anyhow::{Context, Result};
 //  - Database support
 //  - Error handling, including 500s
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+async fn main() -> Result<()> {
 
     // TODO - Do we bother with services?
     //        or just continue with passing the repositories directly?
     //        or do we just pass connection pools and do await with services and repositories?
 
-    #[cfg(not(feature = "diesel"))]
-    let access_token_repository = token::repository::memory::InMemoryAccessTokenRepository
-        ::new();
+    let pool = create_pool("file:target/db/diesel.sqlite3")?;
 
-    #[cfg(feature = "diesel")]
-    let access_token_repository = token::repository::diesel::DieselSqliteAccessTokenRepository
-        ::new("file:target/db/access_tokens.sqlite3")?;
+    run_diesel_migrations(&pool).await?;
 
-    #[cfg(feature = "diesel")]
-    access_token_repository.run_diesel_migrations().await?;
+    let access_token_repository = DieselAccessTokenRepository::new(pool.clone());
 
-    let client_secret_repository = InMemoryClientSecretRepository::new(); // "file:target/db/client_secrets.sqlite3"
-    let client_configuration_repository = InMemoryClientConfigurationRepository::new(); // "file:target/db/client_configurations.sqlite3"
+    let client_secret_repository = InMemoryClientSecretRepository::new();
+    let client_configuration_repository = InMemoryClientConfigurationRepository::new();
 
     let client_authenticator = ClientAuthenticationService::new(
         client_secret_repository.clone(),

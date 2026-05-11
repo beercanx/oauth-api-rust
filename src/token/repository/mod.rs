@@ -1,7 +1,3 @@
-#[cfg(not(feature = "diesel"))]
-pub mod memory;
-
-#[cfg(feature = "diesel")]
 pub mod diesel;
 
 use crate::util::uuid_wrapper::UuidWrapper;

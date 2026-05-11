@@ -1,63 +1,26 @@
-use anyhow::Result;
+use crate::schema::access_tokens::dsl::access_tokens;
+use crate::schema::access_tokens::dsl::id;
+use crate::token::repository::TokenRepository;
+use crate::token::AccessToken;
+use crate::util::diesel_types::AsyncSqlitePool;
+use crate::util::uuid_wrapper::UuidWrapper;
 use anyhow::Context;
-
+use anyhow::Result;
 use diesel::prelude::*;
 use diesel_async::{AsyncConnection, RunQueryDsl};
-use diesel_async::pooled_connection::AsyncDieselConnectionManager;
-use diesel_async::pooled_connection::deadpool::Pool;
-use diesel_async::sync_connection_wrapper::SyncConnectionWrapper;
-
-use std::error::Error;
-
-use crate::token::schema::access_tokens::dsl::access_tokens;
-use crate::token::schema::access_tokens::dsl::id;
-
-use crate::token::AccessToken;
-use crate::token::repository::TokenRepository;
-use crate::util::uuid_wrapper::UuidWrapper;
-
-type AsyncSqliteConnection = SyncConnectionWrapper<SqliteConnection>;
-type AsyncSqliteConnectionManager = AsyncDieselConnectionManager<AsyncSqliteConnection>;
-type AsyncSqlitePool = Pool<AsyncSqliteConnection>;
 
 #[derive(Clone)]
-pub struct DieselSqliteAccessTokenRepository {
+pub struct DieselAccessTokenRepository {
     pool: AsyncSqlitePool,
 }
 
-impl DieselSqliteAccessTokenRepository {
-    pub fn new(database_url: &str) -> Result<DieselSqliteAccessTokenRepository> {
-
-        let manager = AsyncSqliteConnectionManager::new(database_url);
-
-        let pool = AsyncSqlitePool::builder(manager)
-            .max_size(10)
-            .build()
-            .with_context(|| format!("Failed to create Diesel sqlite database pool: {database_url}"))?;
-
-        Ok(Self {
-            pool
-        })
-    }
-    pub async fn run_diesel_migrations(&self) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-        use diesel_async::AsyncMigrationHarness;
-        use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-        const ACCESS_TOKEN_MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/access_tokens");
-
-        let connection = self.pool
-            .get()
-            .await
-            .with_context(|| "Failed to get connection from pool")?;
-
-        let mut harness = AsyncMigrationHarness::new(connection);
-
-        harness.run_pending_migrations(ACCESS_TOKEN_MIGRATIONS)?;
-
-        Ok(())
+impl DieselAccessTokenRepository {
+    pub fn new(pool: AsyncSqlitePool) -> DieselAccessTokenRepository {
+        Self { pool }
     }
 }
 
-impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
+impl TokenRepository<AccessToken> for DieselAccessTokenRepository {
 
     async fn get_token(&self, token: UuidWrapper) -> Result<Option<AccessToken>> {
         let connection = &mut self.pool.get()
@@ -113,36 +76,34 @@ impl TokenRepository<AccessToken> for DieselSqliteAccessTokenRepository {
 
 #[cfg(test)]
 pub mod test_support {
-    use anyhow::anyhow;
     use super::*;
-    impl DieselSqliteAccessTokenRepository {
-        pub async fn new_in_memory() -> Result<DieselSqliteAccessTokenRepository> {
-            let database = DieselSqliteAccessTokenRepository::new(":memory:")?;
-            match database.run_diesel_migrations().await {
-                Ok(()) => Ok(database),
-                Err(e) => Err(anyhow!("Failed to run migrations: {e}")),
-            }
+    use crate::util::diesel_migrations::run_diesel_migrations;
+    impl DieselAccessTokenRepository {
+        pub async fn new_in_memory() -> Result<DieselAccessTokenRepository> {
+            let pool = crate::util::diesel_pool::create_pool(":memory:")?;
+            run_diesel_migrations(&pool).await?;
+            Ok(DieselAccessTokenRepository::new(pool))
         }
     }
-}
-
-#[cfg(test)]
-mod unit_tests {
-
-    use super::*;
-    use assertables::*;
-
-    impl std::fmt::Debug for DieselSqliteAccessTokenRepository {
+    impl std::fmt::Debug for DieselAccessTokenRepository {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("DieselSqliteAccessTokenRepository")
                 .field("pool.manager", &self.pool.manager())
                 .finish()
         }
     }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use assertables::*;
+    use strum::IntoEnumIterator;
+    use crate::scope::Scope;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_save_and_retrieve_a_token() {
-        let under_test = assert_ok!(DieselSqliteAccessTokenRepository::new_in_memory().await);
+        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
         let token = AccessToken::new();
         assert_ok!(under_test.save_token(&token).await);
         assert_eq!(assert_some!(assert_ok!(under_test.get_token(token.id).await)), token);
@@ -150,7 +111,7 @@ mod unit_tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_delete_a_token() {
-        let under_test = assert_ok!(DieselSqliteAccessTokenRepository::new_in_memory().await);
+        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
         let token = AccessToken::new();
         assert_ok!(under_test.save_token(&token).await);
         assert_ok!(under_test.delete_token(token.id).await);
@@ -159,16 +120,40 @@ mod unit_tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_delete_a_token_when_non_existent() {
-        let under_test = assert_ok!(DieselSqliteAccessTokenRepository::new_in_memory().await);
+        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
         assert_ok!(under_test.delete_token(UuidWrapper::random()).await);
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_clone_but_share_storage() {
-        let first = assert_ok!(DieselSqliteAccessTokenRepository::new_in_memory().await);
+        let first = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
         let second = first.clone();
         let token = AccessToken::new();
         assert_ok!(first.save_token(&token).await);
         assert_eq!(assert_some!(assert_ok!(second.get_token(token.id).await)), token);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn should_be_able_to_save_a_token_with_all_scopes_assigned() {
+        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
+        let mut token = AccessToken::new();
+        token.scopes = Scope::iter()
+            .map(|scope| scope.to_string())
+            .collect::<Vec<String>>()
+            .join(" ");
+        assert_ok!(under_test.save_token(&token).await);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn should_not_be_able_to_save_a_token_with_too_many_scopes_assigned() {
+        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
+        let mut token = AccessToken::new();
+        let all_scopes = Scope::iter()
+            .map(|scope| scope.to_string())
+            .collect::<Vec<String>>()
+            .join(" ");
+        token.scopes = all_scopes.clone() + " extra_scope";
+        let error = assert_err!(under_test.save_token(&token).await);
+        assert_eq!(error.root_cause().to_string(), format!("CHECK constraint failed: LENGTH(scopes) <= {}", String::len(&all_scopes)));
     }
 }

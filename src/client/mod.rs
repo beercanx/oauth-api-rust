@@ -5,9 +5,9 @@ pub mod authentication;
 pub mod configuration;
 pub mod middleware;
 
-use crate::value_struct;
 use crate::disable_deserialization;
-use crate::enum_with_from_str;
+use crate::value_struct;
+use strum_macros::{Display, EnumString};
 
 value_struct! {
     pub struct ClientId(String);
@@ -30,13 +30,12 @@ pub enum ClientAction {
     // ProofKeyForCodeExchange,
 }
 
-enum_with_from_str! {
-    #[derive(Debug, Hash, Eq, PartialEq, Clone)]
-    pub enum GrantType {
-        // AuthorizationCode: "authorization_code",
-        Password: "password",
-        // RefreshToken: "refresh_token",
-    }
+#[derive(EnumString, Display, Debug, Hash, Eq, PartialEq, Clone)]
+#[strum(serialize_all = "snake_case")]
+pub enum GrantType {
+    // AuthorizationCode,
+    Password,
+    // RefreshToken
 }
 
 principal! {
@@ -48,10 +47,10 @@ principal! {
 
 #[cfg(test)]
 pub mod test_support {
-    use std::collections::HashSet;
-    use crate::client::{ClientId, ClientPrincipal, ClientType, ConfidentialClient, GrantType, PublicClient};
     use crate::client::configuration::ClientConfiguration;
+    use crate::client::{ClientId, ClientPrincipal, ClientType, ConfidentialClient, GrantType, PublicClient};
     use crate::scope::Scope;
+    use std::collections::HashSet;
 
     impl ClientPrincipal {
         pub fn new_principal(configuration: ClientConfiguration) -> ClientPrincipal {

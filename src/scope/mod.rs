@@ -1,18 +1,18 @@
 pub mod parser;
 
-use std::collections::HashSet;
-use serde::{Serialize, Serializer};
 use crate::disable_deserialization;
-use crate::enum_with_from_str;
+use serde::{Serialize, Serializer};
+use std::collections::HashSet;
+use strum_macros::Display;
+use strum_macros::EnumIter;
+use strum_macros::EnumString;
 
-enum_with_from_str! {
-    #[derive(Hash, Eq, PartialEq, Clone)]
-    #[cfg_attr(test, derive(Debug))]
-    pub enum Scope {
-        Basic: "basic",
-        Read: "read",
-        Write: "write",
-    }
+#[derive(EnumString, EnumIter, Display, Debug, Hash, Eq, PartialEq, Clone)]
+#[strum(serialize_all = "snake_case")]
+pub enum Scope {
+    Basic,
+    Read,
+    Write,
 }
 
 #[derive(Eq, PartialEq, Clone)]

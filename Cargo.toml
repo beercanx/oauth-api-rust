@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["diesel"]
-diesel = ["dep:diesel", "dep:diesel-async", "dep:diesel_migrations", "dep:libsqlite3-sys"]
+default = []
 
 [dependencies]
 argon2 = "0.5.3"
@@ -16,14 +15,16 @@ tokio = { version = "1.52.1", features = ["macros", "rt-multi-thread", "signal"]
 uuid = { version = "1.23.1", features = ["v4", "serde"] }
 form_urlencoded = "1.2.2"
 tower = "0.5.3"
-diesel = { version = "2.3.9", optional = true, features = ["returning_clauses_for_sqlite_3_35", "chrono"] }
-diesel-async = { version = "0.9.0", optional = true, features = ["sqlite", "deadpool", "migrations"] }
-diesel_migrations = { version = "2.3.2", optional = true }
-libsqlite3-sys = { version = "*", optional = true, features = ["bundled"] }
+diesel = { version = "2.3.9", features = ["returning_clauses_for_sqlite_3_35", "chrono"] }
+diesel-async = { version = "0.9.0", features = ["sqlite", "deadpool", "migrations"] }
+diesel_migrations = { version = "2.3.2" }
+libsqlite3-sys = { version = "*", features = ["bundled"] }
 chrono = { version = "0.4.44", features = ["serde"] }
 anyhow = "1.0.102"
 thiserror = "2.0.18"
 trait-variant = "0.1.2"
+strum = "0.28.0"
+strum_macros = "0.28.0"
 
 [dev-dependencies]
 assertables = "9.9.0"

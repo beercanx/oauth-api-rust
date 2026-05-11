@@ -50,14 +50,20 @@ where
 }
 
 pub fn validate_grant_type(principal: ClientPrincipal, request: &HashMap<String, String>) -> Result<TokenExchangeForm, TokenExchangeResponse> {
-    match request.get("grant_type").map(|s| s.parse::<GrantType>()) {
+    let maybe_grant_type = request
+        .get("grant_type")
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(str::parse::<GrantType>);
+
+    match maybe_grant_type {
 
         None => Err(TokenExchangeResponse::missing_parameter("grant_type")),
 
-        Some(Err(error_message)) => Err(
+        Some(Err(_)) => Err(
             TokenExchangeResponse::Failure {
                 error: ErrorType::UnsupportedGrantType,
-                error_description: Some(error_message),
+                error_description: None,
             }
         ),
 

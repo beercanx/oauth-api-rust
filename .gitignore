@@ -1,3 +1,7 @@
 /target
 
 .idea
+
+.env
+
+/migrations/.diesel_lock
