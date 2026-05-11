@@ -50,33 +50,25 @@ where
 }
 
 pub fn validate_grant_type(principal: ClientPrincipal, request: &HashMap<String, String>) -> Result<TokenExchangeForm, TokenExchangeResponse> {
-    let maybe_grant_type = request
-        .get("grant_type")
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .map(str::parse::<GrantType>);
-
-    match maybe_grant_type {
-
+    match request.get("grant_type") {
         None => Err(TokenExchangeResponse::missing_parameter("grant_type")),
-
-        Some(Err(_)) => Err(
-            TokenExchangeResponse::Failure {
-                error: ErrorType::UnsupportedGrantType,
-                error_description: None,
-            }
-        ),
-
-        Some(Ok(grant_type)) if !principal.can_perform_grant_type(&grant_type) => Err(
-            TokenExchangeResponse::Failure {
-                error: ErrorType::UnauthorizedClient,
-                error_description: Some(format!("not authorized to: {grant_type:?}")),
-            }
-        ),
-
-        Some(Ok(GrantType::Password)) => Ok(TokenExchangeForm(
-            Password(validate_password_grant(principal, request)?)
-        )),
+        Some(raw_grant_type) => match raw_grant_type.parse::<GrantType>() {
+            Err(_) => Err(
+                TokenExchangeResponse::Failure {
+                    error: ErrorType::UnsupportedGrantType,
+                    error_description: Some(format!("unsupported: {raw_grant_type}")),
+                }
+            ),
+            Ok(grant_type) if !principal.can_perform_grant_type(&grant_type) => Err(
+                TokenExchangeResponse::Failure {
+                    error: ErrorType::UnauthorizedClient,
+                    error_description: Some(format!("not authorized to: {grant_type:?}")),
+                }
+            ),
+            Ok(GrantType::Password) => Ok(TokenExchangeForm(
+                Password(validate_password_grant(principal, request)?)
+            )),
+        }
     }
 }
 
