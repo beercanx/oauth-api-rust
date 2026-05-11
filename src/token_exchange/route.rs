@@ -95,7 +95,7 @@ mod integration_tests {
     }
 
     fn basic_auth(username: &str, password: &str) -> String {
-        format!("Basic {}", BASE64_STANDARD.encode(format!("{}:{}", username, password)))
+        format!("Basic {}", BASE64_STANDARD.encode(format!("{username}:{password}")))
     }
 
     mod invalid_http_request {

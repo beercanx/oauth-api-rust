@@ -145,10 +145,10 @@ mod unit_tests {
                 ClientPrincipal::new_principal(ClientConfiguration {
                     client_id: String::from("unauthorised").into(),
                     client_type: ClientType::Confidential,
-                    redirect_uris: Default::default(),
-                    allowed_scopes: Default::default(),
-                    allowed_actions: Default::default(),
-                    allowed_grant_types: Default::default(),
+                    redirect_uris: HashSet::default(),
+                    allowed_scopes: HashSet::default(),
+                    allowed_actions: HashSet::default(),
+                    allowed_grant_types: HashSet::default(),
                 }),
                 &map_of! {
                     "username" => "aardvark",
@@ -253,9 +253,9 @@ mod unit_tests {
                 ClientPrincipal::new_principal(ClientConfiguration {
                     client_id: String::from("aardvark").into(),
                     client_type: ClientType::Confidential,
-                    redirect_uris: Default::default(),
-                    allowed_scopes: Default::default(),
-                    allowed_actions: Default::default(),
+                    redirect_uris: HashSet::default(),
+                    allowed_scopes: HashSet::default(),
+                    allowed_actions: HashSet::default(),
                     allowed_grant_types: HashSet::from([Password]),
                 }),
                 &map_of! {
@@ -316,9 +316,9 @@ mod unit_tests {
                 ClientPrincipal::new_principal(ClientConfiguration {
                     client_id: String::from("aardvark").into(),
                     client_type: ClientType::Confidential,
-                    redirect_uris: Default::default(),
+                    redirect_uris: HashSet::default(),
                     allowed_scopes: HashSet::from([Scope::Read]),
-                    allowed_actions: Default::default(),
+                    allowed_actions: HashSet::default(),
                     allowed_grant_types: HashSet::from([Password]),
                 }),
                 &map_of! {

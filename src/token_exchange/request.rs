@@ -96,6 +96,7 @@ mod unit_tests {
 
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/TokenRequestValidationTest.kt
 
+    use std::collections::HashSet;
     use super::*;
     use assertables::*;
     use crate::client::ClientType;
@@ -158,10 +159,10 @@ mod unit_tests {
         ClientPrincipal::new_principal(ClientConfiguration {
             client_id: String::from("invalid").into(),
             client_type: ClientType::Confidential,
-            redirect_uris: Default::default(),
-            allowed_scopes: Default::default(),
-            allowed_actions: Default::default(),
-            allowed_grant_types: Default::default(),
+            redirect_uris: HashSet::default(),
+            allowed_scopes: HashSet::default(),
+            allowed_actions: HashSet::default(),
+            allowed_grant_types: HashSet::default(),
         }),
         &input_parameters! { "grant_type" => "password" },
         TokenExchangeResponse::Failure {
@@ -177,7 +178,7 @@ mod unit_tests {
         TokenExchangeForm(Password(PasswordGrantRequest {
             principal: ClientPrincipal::new_confidential_client("aardvark"),
             username: "aardvark".into(),
-            password: "".into(),
+            password: String::new(),
             scopes: None,
         }))
     }
