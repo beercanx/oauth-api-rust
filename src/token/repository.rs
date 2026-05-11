@@ -1,13 +1,19 @@
 use crate::schema::access_tokens::dsl::access_tokens;
 use crate::schema::access_tokens::dsl::id;
-use crate::token::repository::TokenRepository;
 use crate::token::AccessToken;
 use crate::util::diesel_types::AsyncSqlitePool;
 use crate::util::uuid_wrapper::UuidWrapper;
-use anyhow::Context;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use diesel::prelude::*;
 use diesel_async::{AsyncConnection, RunQueryDsl};
+
+#[trait_variant::make(Send)]
+pub trait TokenRepository<T>: Sync + Clone {
+    async fn get_token(&self, id: UuidWrapper) -> Result<Option<T>>;
+    async fn save_token(&self, token: &T) -> Result<()>;
+    #[allow(dead_code)] // TODO - Remove after we implement token revocation.
+    async fn delete_token(&self, id: UuidWrapper) -> Result<()>;
+}
 
 #[derive(Clone)]
 pub struct DieselAccessTokenRepository {
@@ -57,18 +63,18 @@ impl TokenRepository<AccessToken> for DieselAccessTokenRepository {
             .with_context(|| "Failed to get connection from pool")?;
 
         connection.transaction(async |connection| {
-                diesel::delete(access_tokens)
-                    .filter(id.eq(token))
-                    .execute(connection)
-                    .await
-                    .and_then(|deleted_rows| {
-                        if deleted_rows == 1 || deleted_rows == 0 {
-                            Ok(())
-                        } else {
-                            Err(diesel::result::Error::RollbackTransaction)
-                        }
-                    })
-            })
+            diesel::delete(access_tokens)
+                .filter(id.eq(token))
+                .execute(connection)
+                .await
+                .and_then(|deleted_rows| {
+                    if deleted_rows == 1 || deleted_rows == 0 {
+                        Ok(())
+                    } else {
+                        Err(diesel::result::Error::RollbackTransaction)
+                    }
+                })
+        })
             .await
             .with_context(|| "Error deleting access token from database")
     }
@@ -97,9 +103,9 @@ pub mod test_support {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
+    use crate::scope::Scope;
     use assertables::*;
     use strum::IntoEnumIterator;
-    use crate::scope::Scope;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_save_and_retrieve_a_token() {

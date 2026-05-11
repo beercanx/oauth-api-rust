@@ -70,7 +70,7 @@ mod integration_tests {
     use crate::client::authentication::ClientAuthenticationService;
     use crate::client::configuration::InMemoryClientConfigurationRepository;
     use crate::client::secret::InMemoryClientSecretRepository;
-    use crate::token::repository::diesel::DieselAccessTokenRepository;
+    use crate::token::repository::DieselAccessTokenRepository;
 
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/TokenRouteIntegrationTests.kt
 

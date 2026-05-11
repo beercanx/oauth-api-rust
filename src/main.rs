@@ -17,18 +17,17 @@ mod client;
 mod util;
 mod schema;
 
+use crate::util::diesel_migrations::run_diesel_migrations;
+use crate::util::diesel_pool::create_pool;
+use anyhow::{Context, Result};
 use axum::{serve, Router};
-use tokio::net::TcpListener;
 use client::authentication::ClientAuthenticationService;
 use client::configuration::InMemoryClientConfigurationRepository;
 use client::secret::InMemoryClientSecretRepository;
+use token::repository::DieselAccessTokenRepository;
 use token_exchange::TokenExchangeState;
 use token_introspection::TokenIntrospectionState;
-
-use anyhow::{Context, Result};
-use token::repository::diesel::DieselAccessTokenRepository;
-use crate::util::diesel_migrations::run_diesel_migrations;
-use crate::util::diesel_pool::create_pool;
+use tokio::net::TcpListener;
 
 // TODO List:
 //  - Token endpoint
