@@ -20,6 +20,7 @@ pub async fn require_confidential_client_authentication<C: ClientAuthenticator>(
         None => return Err(StatusCode::UNAUTHORIZED),
         Some(TypedHeader(Authorization(basic))) => {
             authenticator.authenticate_as_confidential_client(basic.username(), basic.password().as_bytes())
+                .await
                 //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .ok_or(StatusCode::UNAUTHORIZED)?
         },
@@ -57,6 +58,7 @@ pub async fn require_client_authentication<C: ClientAuthenticator>(
         // Confidential client via Basic auth
         (Some(TypedHeader(Authorization(basic))), None) => {
             authenticator.authenticate_as_confidential_client(basic.username(), basic.password().as_bytes())
+                .await
                 //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .map(ClientPrincipal::Confidential)
         },
@@ -64,6 +66,7 @@ pub async fn require_client_authentication<C: ClientAuthenticator>(
         // Public client via body client_id
         (None, Some(client_id)) => {
             authenticator.authenticate_as_public_client(&client_id)
+                .await
                 //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
                 .map(ClientPrincipal::Public)
         },

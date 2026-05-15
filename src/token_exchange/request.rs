@@ -1,14 +1,14 @@
-use std::collections::HashMap;
-use axum::extract::{FromRequest, Request};
-use axum::extract::rejection::FormRejection;
-use axum::{Form, Json};
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-use serde::Deserialize;
 use crate::client::{ClientPrincipal, GrantType};
 use crate::token_exchange::grant::password::{validate_password_grant, PasswordGrantRequest};
 use crate::token_exchange::request::TokenExchangeRequest::Password;
 use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
+use axum::extract::rejection::FormRejection;
+use axum::extract::{FromRequest, Request};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::{Form, Json};
+use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Deserialize, Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -88,12 +88,12 @@ mod unit_tests {
 
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/TokenRequestValidationTest.kt
 
-    use std::collections::HashSet;
     use super::*;
-    use assertables::*;
+    use crate::client::configuration::{AllowedActions, AllowedGrantTypes, AllowedScopes, ClientConfiguration, RedirectUris};
     use crate::client::ClientType;
-    use crate::client::configuration::ClientConfiguration;
     use crate::token_exchange::request::validate_grant_type;
+    use assertables::*;
+    use std::collections::HashSet;
 
     macro_rules! input_parameters {
         ($($k:expr => $v:expr),* $(,)?) => {{
@@ -151,10 +151,10 @@ mod unit_tests {
         ClientPrincipal::new_principal(ClientConfiguration {
             client_id: String::from("invalid").into(),
             client_type: ClientType::Confidential,
-            redirect_uris: HashSet::default(),
-            allowed_scopes: HashSet::default(),
-            allowed_actions: HashSet::default(),
-            allowed_grant_types: HashSet::default(),
+            redirect_uris: RedirectUris(HashSet::default()),
+            allowed_scopes: AllowedScopes(HashSet::default()),
+            allowed_actions: AllowedActions(HashSet::default()),
+            allowed_grant_types: AllowedGrantTypes(HashSet::default()),
         }),
         &input_parameters! { "grant_type" => "password" },
         TokenExchangeResponse::Failure {

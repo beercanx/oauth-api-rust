@@ -1,19 +1,19 @@
-use std::collections::HashMap;
-use chrono::{Duration, Utc};
-use serde::Deserialize;
-use ClientPrincipal::Confidential;
-use GrantType::Password;
 use crate::client::authentication::ClientAuthenticator;
 use crate::client::{ClientPrincipal, ConfidentialClient, GrantType};
-use crate::token::{AccessToken, TokenType};
+use crate::scope::parser::parse_scopes;
+use crate::scope::Scopes;
 use crate::token::repository::TokenRepository;
+use crate::token::{AccessToken, TokenType};
 use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
 use crate::token_exchange::route::TokenExchangeState;
-use crate::scope::Scopes;
-use crate::scope::parser::parse_scopes;
+use crate::util::uuid_wrapper::UuidWrapper;
 use crate::util::value_struct::ValueStruct;
 use anyhow::Result;
-use crate::util::uuid_wrapper::UuidWrapper;
+use chrono::{Duration, Utc};
+use serde::Deserialize;
+use std::collections::HashMap;
+use ClientPrincipal::Confidential;
+use GrantType::Password;
 
 #[derive(Deserialize, Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -109,16 +109,17 @@ mod unit_tests {
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/PasswordValidationTest.kt
 
     use super::*;
-    use assertables::*;
-    use std::collections::HashSet;
-    use crate::client::ClientType;
     use crate::client::configuration::ClientConfiguration;
+    use crate::client::ClientType;
+    use crate::map_of;
     use crate::scope::Scope;
     use crate::token_exchange::response::ErrorType;
-    use crate::map_of;
+    use assertables::*;
+    use std::collections::HashSet;
 
     mod client {
         use super::*;
+        use crate::client::configuration::{AllowedActions, AllowedGrantTypes, AllowedScopes, RedirectUris};
 
         #[test]
         fn should_return_invalid_request_for_a_public_client() {
@@ -145,10 +146,10 @@ mod unit_tests {
                 ClientPrincipal::new_principal(ClientConfiguration {
                     client_id: String::from("unauthorised").into(),
                     client_type: ClientType::Confidential,
-                    redirect_uris: HashSet::default(),
-                    allowed_scopes: HashSet::default(),
-                    allowed_actions: HashSet::default(),
-                    allowed_grant_types: HashSet::default(),
+                    redirect_uris: RedirectUris(HashSet::default()),
+                    allowed_scopes: AllowedScopes(HashSet::default()),
+                    allowed_actions: AllowedActions(HashSet::default()),
+                    allowed_grant_types: AllowedGrantTypes(HashSet::default()),
                 }),
                 &map_of! {
                     "username" => "aardvark",
@@ -227,6 +228,7 @@ mod unit_tests {
 
     mod scope {
         use super::*;
+        use crate::client::configuration::{AllowedActions, AllowedGrantTypes, AllowedScopes, RedirectUris};
 
         #[test]
         fn should_return_invalid_request_on_blank_scope() {
@@ -253,10 +255,10 @@ mod unit_tests {
                 ClientPrincipal::new_principal(ClientConfiguration {
                     client_id: String::from("aardvark").into(),
                     client_type: ClientType::Confidential,
-                    redirect_uris: HashSet::default(),
-                    allowed_scopes: HashSet::default(),
-                    allowed_actions: HashSet::default(),
-                    allowed_grant_types: HashSet::from([Password]),
+                    redirect_uris: RedirectUris(HashSet::default()),
+                    allowed_scopes: AllowedScopes(HashSet::default()),
+                    allowed_actions: AllowedActions(HashSet::default()),
+                    allowed_grant_types: AllowedGrantTypes(HashSet::from([Password])),
                 }),
                 &map_of! {
                     "username" => "aardvark",
@@ -316,10 +318,10 @@ mod unit_tests {
                 ClientPrincipal::new_principal(ClientConfiguration {
                     client_id: String::from("aardvark").into(),
                     client_type: ClientType::Confidential,
-                    redirect_uris: HashSet::default(),
-                    allowed_scopes: HashSet::from([Scope::Read]),
-                    allowed_actions: HashSet::default(),
-                    allowed_grant_types: HashSet::from([Password]),
+                    redirect_uris: RedirectUris(HashSet::default()),
+                    allowed_scopes: AllowedScopes(HashSet::from([Scope::Read])),
+                    allowed_actions: AllowedActions(HashSet::default()),
+                    allowed_grant_types: AllowedGrantTypes(HashSet::from([Password])),
                 }),
                 &map_of! {
                     "username" => "aardvark",

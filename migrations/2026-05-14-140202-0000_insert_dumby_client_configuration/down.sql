@@ -1,0 +1,1 @@
+DELETE FROM client_configurations WHERE client_id in ('aardvark', 'badger');

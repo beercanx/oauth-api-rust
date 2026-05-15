@@ -50,19 +50,19 @@ macro_rules! define_principal {
             }
 
             pub fn can_perform_action(&self, action: &crate::client::ClientAction) -> bool {
-                self.configuration.allowed_actions.contains(action)
+                self.configuration.allowed_actions.0.contains(action)
             }
 
             pub fn can_perform_grant_type(&self, grant_type: &crate::client::GrantType) -> bool {
-                self.configuration.allowed_grant_types.contains(grant_type)
+                self.configuration.allowed_grant_types.0.contains(grant_type)
             }
 
             pub fn can_be_issued(&self, scope: &crate::scope::Scope) -> bool {
-                self.configuration.allowed_scopes.contains(scope)
+                self.configuration.allowed_scopes.0.contains(scope)
             }
 
             pub fn has_redirect_uri(&self, redirect_uri: &str) -> bool {
-                self.configuration.redirect_uris.contains(redirect_uri)
+                self.configuration.redirect_uris.0.contains(redirect_uri)
             }
         }
 

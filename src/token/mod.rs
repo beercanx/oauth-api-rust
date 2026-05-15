@@ -1,12 +1,13 @@
 pub mod repository;
 
+use crate::util::uuid_wrapper::UuidWrapper;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::Serialize;
-use crate::util::uuid_wrapper::UuidWrapper;
+use strum_macros::{Display, EnumString};
 
-#[cfg_attr(test, derive(Debug))]
-#[derive(Serialize, Eq, PartialEq)]
+#[derive(Serialize, EnumString, Display, Debug, Eq, PartialEq)]
+#[strum(serialize_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum TokenType {
     // https://www.rfc-editor.org/rfc/rfc6750

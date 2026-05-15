@@ -22,7 +22,7 @@ use crate::util::diesel_pool::create_pool;
 use anyhow::{Context, Result};
 use axum::{serve, Router};
 use client::authentication::ClientAuthenticationService;
-use client::configuration::InMemoryClientConfigurationRepository;
+use client::configuration::DieselClientConfigurationRepository;
 use client::secret::InMemoryClientSecretRepository;
 use token::repository::DieselAccessTokenRepository;
 use token_exchange::TokenExchangeState;
@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
     let access_token_repository = DieselAccessTokenRepository::new(pool.clone());
 
     let client_secret_repository = InMemoryClientSecretRepository::new();
-    let client_configuration_repository = InMemoryClientConfigurationRepository::new();
+    let client_configuration_repository = DieselClientConfigurationRepository::new(pool.clone());
 
     let client_authenticator = ClientAuthenticationService::new(
         client_secret_repository.clone(),

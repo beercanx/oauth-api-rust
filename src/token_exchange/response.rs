@@ -1,7 +1,7 @@
-use serde::Serialize;
 use crate::scope::Scopes;
 use crate::token::TokenType;
 use crate::util::uuid_wrapper::UuidWrapper;
+use serde::Serialize;
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Serialize, Eq, PartialEq)]
@@ -69,8 +69,7 @@ impl TokenExchangeResponse {
     }
 }
 
-#[cfg_attr(test, derive(Debug))]
-#[derive(Serialize, Eq, PartialEq)]
+#[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorType {
 

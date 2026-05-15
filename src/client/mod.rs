@@ -5,33 +5,56 @@ pub mod authentication;
 pub mod configuration;
 pub mod middleware;
 
-use crate::disable_deserialization;
 use crate::value_struct;
+use crate::{diesel_from_sql_for_enum_strings, diesel_from_sql_for_value_structs, diesel_to_sql_for_value_structs, disable_deserialization};
+use diesel::sql_types::Text;
+use diesel::{AsExpression, FromSqlRow};
+use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 
 value_struct! {
+    #[derive(Hash, FromSqlRow, AsExpression)]
+    #[diesel(sql_type = diesel::sql_types::Text)]
     pub struct ClientId(String);
+}
+
+diesel_from_sql_for_value_structs! {
+    #[sql_type(Text)]
+    ClientId(String);
+}
+
+diesel_to_sql_for_value_structs! {
+    #[sql_type(Text)]
+    ClientId(String);
 }
 
 disable_deserialization!(ClientId);
 
-#[derive(Hash, Eq, PartialEq, Clone)]
-#[cfg_attr(test, derive(Debug))]
+#[derive(EnumString, Display, Debug, Hash, Eq, PartialEq, Clone)]
+#[strum(serialize_all = "snake_case")]
+#[derive(FromSqlRow, AsExpression)]
+#[diesel(sql_type = Text)]
 pub enum ClientType {
     Confidential,
     Public,
 }
 
-#[derive(Hash, Eq, PartialEq, Clone)]
-#[cfg_attr(test, derive(Debug))]
+diesel_from_sql_for_enum_strings! {
+    ClientType
+}
+
+#[derive(EnumString, Display, Serialize, Deserialize, Debug, Hash, Eq, PartialEq, Clone)]
+#[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum ClientAction {
     // Authorize,
     Introspect,
     // ProofKeyForCodeExchange,
 }
 
-#[derive(EnumString, Display, Debug, Hash, Eq, PartialEq, Clone)]
+#[derive(EnumString, Display, Serialize, Deserialize, Debug, Hash, Eq, PartialEq, Clone)]
 #[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum GrantType {
     // AuthorizationCode,
     Password,
@@ -47,7 +70,7 @@ principal! {
 
 #[cfg(test)]
 pub mod test_support {
-    use crate::client::configuration::ClientConfiguration;
+    use crate::client::configuration::{AllowedActions, AllowedGrantTypes, AllowedScopes, ClientConfiguration, RedirectUris};
     use crate::client::{ClientId, ClientPrincipal, ClientType, ConfidentialClient, GrantType, PublicClient};
     use crate::scope::Scope;
     use std::collections::HashSet;
@@ -83,10 +106,10 @@ pub mod test_support {
             ClientConfiguration {
                 client_id: ClientId(client_id.into()),
                 client_type,
-                redirect_uris: HashSet::default(),
-                allowed_scopes: HashSet::from([Scope::Basic, Scope::Read, Scope::Write]),
-                allowed_actions: HashSet::default(),
-                allowed_grant_types: HashSet::from([GrantType::Password]),
+                redirect_uris: RedirectUris(HashSet::default()),
+                allowed_scopes: AllowedScopes(HashSet::from([Scope::Basic, Scope::Read, Scope::Write])),
+                allowed_actions: AllowedActions(HashSet::default()),
+                allowed_grant_types: AllowedGrantTypes(HashSet::from([GrantType::Password])),
             }
         }
     }

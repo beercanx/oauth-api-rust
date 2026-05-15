@@ -7,18 +7,17 @@ pub trait ValueStruct {
 macro_rules! value_struct {
     (
         $(#[$m:meta])*
-        $vis:vis struct $struct_name:ident($field_type:ident);
+        $vis:vis struct $struct_name:ident($field_vis:vis $field_type:ident$(<$optional_inner_type:ident>)?);
     ) => {
         $(#[$m])*
         #[non_exhaustive]
-        #[derive(Clone, Hash, Eq, PartialEq)]
+        #[derive(Debug, Clone, Eq, PartialEq)]
         #[derive(serde::Serialize)]
         #[serde(transparent)]
-        #[cfg_attr(test, derive(Debug))]
-        $vis struct $struct_name($field_type);
+        $vis struct $struct_name($field_vis $field_type$(<$optional_inner_type>)?);
 
         impl $crate::util::value_struct::ValueStruct for $struct_name {
-            type ValueType = $field_type;
+            type ValueType = $field_type$(<$optional_inner_type>)?;
 
             #[inline]
             fn value(&self) -> &Self::ValueType {
@@ -26,14 +25,14 @@ macro_rules! value_struct {
             }
         }
 
-        impl std::convert::From<$field_type> for $struct_name {
-            fn from(value: $field_type) -> Self {
+        impl std::convert::From<$field_type$(<$optional_inner_type>)?> for $struct_name {
+            fn from(value: $field_type$(<$optional_inner_type>)?) -> Self {
                 $struct_name(value)
             }
         }
 
-        impl std::convert::From<&$field_type> for $struct_name {
-            fn from(value: &$field_type) -> Self {
+        impl std::convert::From<&$field_type$(<$optional_inner_type>)?> for $struct_name {
+            fn from(value: &$field_type$(<$optional_inner_type>)?) -> Self {
                 $struct_name(value.clone())
             }
         }

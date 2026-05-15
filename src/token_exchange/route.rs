@@ -68,7 +68,7 @@ mod integration_tests {
     use serde_json::Value;
     use tower::ServiceExt;
     use crate::client::authentication::ClientAuthenticationService;
-    use crate::client::configuration::InMemoryClientConfigurationRepository;
+    use crate::client::configuration::DieselClientConfigurationRepository;
     use crate::client::secret::InMemoryClientSecretRepository;
     use crate::token::repository::DieselAccessTokenRepository;
 
@@ -84,7 +84,7 @@ mod integration_tests {
             access_token_repository: assert_ok!(DieselAccessTokenRepository::new_in_memory().await),
             client_authenticator: ClientAuthenticationService::new(
                 InMemoryClientSecretRepository::new(),
-                InMemoryClientConfigurationRepository::new(),
+                assert_ok!(DieselClientConfigurationRepository::new_in_memory().await),
             ),
         })
     }

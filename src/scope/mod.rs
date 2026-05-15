@@ -1,22 +1,22 @@
 pub mod parser;
 
 use crate::disable_deserialization;
-use serde::{Serialize, Serializer};
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashSet;
 use strum_macros::Display;
 use strum_macros::EnumIter;
 use strum_macros::EnumString;
 
-#[derive(EnumString, EnumIter, Display, Debug, Hash, Eq, PartialEq, Clone)]
+#[derive(EnumString, EnumIter, Display, Serialize, Deserialize, Debug, Hash, Eq, PartialEq, Clone)]
 #[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum Scope {
     Basic,
     Read,
     Write,
 }
 
-#[derive(Eq, PartialEq, Clone)]
-#[cfg_attr(test, derive(Debug))]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Scopes(pub HashSet<Scope>);
 
 impl Serialize for Scopes {
@@ -31,5 +31,4 @@ impl Serialize for Scopes {
 }
 
 // To enable us to trust Scope is valid, we don't allow direct deserialization of Scope.
-disable_deserialization!(Scope);
 disable_deserialization!(Scopes);

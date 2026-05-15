@@ -1,8 +1,12 @@
+pub mod diesel_from_sql_for_enum_strings;
+pub mod diesel_from_sql_for_json_fields;
+pub mod diesel_from_sql_for_value_structs;
+pub mod diesel_migrations;
+pub mod diesel_pool;
+pub mod diesel_to_sql_for_value_structs;
+pub mod diesel_types;
 pub mod disable_deserialization;
 pub mod disable_serialization;
 pub mod map_of;
-pub mod value_struct;
 pub mod uuid_wrapper;
-pub mod diesel_migrations;
-pub mod diesel_types;
-pub mod diesel_pool;
+pub mod value_struct;

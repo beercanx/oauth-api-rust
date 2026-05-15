@@ -3,9 +3,11 @@ use crate::client::{ClientType, ConfidentialClient, PublicClient};
 use crate::client::configuration::ClientConfigurationRepository;
 use crate::client::secret::ClientSecretRepository;
 
+// TODO - Bubble up low level DB errors don't report them as unauthorised
+#[trait_variant::make(Send)]
 pub trait ClientAuthenticator: Send + Sync + Clone {
-    fn authenticate_as_public_client(&self, client_id: &str) -> Option<PublicClient>;
-    fn authenticate_as_confidential_client(&self, client_id: &str, client_secret: &[u8]) -> Option<ConfidentialClient>;
+    async fn authenticate_as_public_client(&self, client_id: &str) -> Option<PublicClient>;
+    async fn authenticate_as_confidential_client(&self, client_id: &str, client_secret: &[u8]) -> Option<ConfidentialClient>;
 }
 
 #[derive(Clone)]
@@ -28,10 +30,10 @@ where
     S: ClientSecretRepository,
     C: ClientConfigurationRepository,
 {
-    fn authenticate_as_public_client(&self, client_id: &str) -> Option<PublicClient> {
+    async fn authenticate_as_public_client(&self, client_id: &str) -> Option<PublicClient> {
 
-        match self.client_configuration_repository.find_by_client_id(client_id) {
-            Some(configuration) if configuration.client_type == ClientType::Public => {
+        match self.client_configuration_repository.find_by_client_id(client_id).await {
+            Ok(Some(configuration)) if configuration.client_type == ClientType::Public => {
                 Some(PublicClient { configuration })
             },
             _ => None
@@ -39,7 +41,7 @@ where
     }
 
     // TODO - Do we flip to the lookup from config first, then credential checks?
-    fn authenticate_as_confidential_client(&self, client_id: &str, client_secret: &[u8]) -> Option<ConfidentialClient> {
+    async fn authenticate_as_confidential_client(&self, client_id: &str, client_secret: &[u8]) -> Option<ConfidentialClient> {
 
         let secrets = self.secret_repository.find_all_by_client_id(client_id);
 
@@ -54,8 +56,8 @@ where
             Some(secret) => &secret.client_id,
         };
 
-        match self.client_configuration_repository.find_by_id(client_id) {
-            Some(configuration) if configuration.client_type == ClientType::Confidential => {
+        match self.client_configuration_repository.find_by_id(client_id).await {
+            Ok(Some(configuration)) if configuration.client_type == ClientType::Confidential => {
                 Some(ConfidentialClient { configuration })
             },
             _ => None
