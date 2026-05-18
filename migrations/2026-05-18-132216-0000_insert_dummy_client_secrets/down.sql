@@ -1,0 +1,1 @@
+DELETE FROM client_secrets WHERE id in (X'a9747e2e34c64870b792fc7c004baef7');

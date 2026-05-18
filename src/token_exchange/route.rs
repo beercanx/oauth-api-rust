@@ -69,7 +69,7 @@ mod integration_tests {
     use tower::ServiceExt;
     use crate::client::authentication::ClientAuthenticationService;
     use crate::client::configuration::DieselClientConfigurationRepository;
-    use crate::client::secret::InMemoryClientSecretRepository;
+    use crate::client::secret::DieselClientSecretRepository;
     use crate::token::repository::DieselAccessTokenRepository;
 
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/TokenRouteIntegrationTests.kt
@@ -83,7 +83,7 @@ mod integration_tests {
         route(TokenExchangeState {
             access_token_repository: assert_ok!(DieselAccessTokenRepository::new_in_memory().await),
             client_authenticator: ClientAuthenticationService::new(
-                InMemoryClientSecretRepository::new(),
+                assert_ok!(DieselClientSecretRepository::new_in_memory().await),
                 assert_ok!(DieselClientConfigurationRepository::new_in_memory().await),
             ),
         })

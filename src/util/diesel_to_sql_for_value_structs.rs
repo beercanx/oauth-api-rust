@@ -10,10 +10,12 @@ macro_rules! diesel_to_sql_for_value_structs {
         $(
             impl<B: diesel::backend::Backend> diesel::serialize::ToSql<$sql_type, B> for $struct_name
             where
-                $field_type: diesel::serialize::ToSql<$sql_type, B>
+                $field_type: diesel::serialize::ToSql<$sql_type, B>,
+                $struct_name: $crate::util::value_struct::ValueStruct,
             {
                 fn to_sql<'b>(&'b self, out: &mut diesel::serialize::Output<'b, '_, B>) -> diesel::serialize::Result {
-                    $field_type::to_sql(&self.0, out)
+                    use $crate::util::value_struct::ValueStruct;
+                    $field_type::to_sql(self.value(), out)
                 }
             }
         )+

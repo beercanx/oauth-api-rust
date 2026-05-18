@@ -1,75 +1,91 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-use uuid::Uuid;
+use anyhow::{Context, Result};
+use diesel::prelude::*;
+use diesel_async::RunQueryDsl;
 use crate::client::ClientId;
-use crate::util::value_struct::ValueStruct;
+use crate::schema::client_secrets::dsl;
+use crate::util::diesel_types::AsyncSqlitePool;
+use crate::util::uuid_wrapper::UuidWrapper;
+
+#[derive(Queryable, Selectable)]
+#[cfg_attr(test, derive(Debug))]
+#[diesel(table_name = crate::schema::client_secrets)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct ClientSecret {
+    #[allow(dead_code)]
+    pub id: UuidWrapper,
+    pub client_id: ClientId,
+    pub hash: String,
+}
+
+#[trait_variant::make(Send)]
+pub trait ClientSecretRepository: Send + Sync + Clone {
+    async fn find_all_by_client_id(&self, client_id: &str) -> Result<Vec<ClientSecret>>;
+}
 
 #[derive(Clone)]
-pub struct ClientSecret {
-    //pub id: Uuid,
-    pub client_id: ClientId,
-    pub hashed_secret: String,
+pub struct DieselClientSecretRepository {
+    pool: AsyncSqlitePool,
 }
 
-// TODO - #[trait_variant::make(Send)]
-pub trait ClientSecretRepository: Send + Sync + Clone {
-    //fn find_by_id(&self, id: &Uuid) -> Option<ClientSecret>;
-    //fn find_all_by_client(&self, client_id: &ClientId) -> Vec<ClientSecret>;
-    fn find_all_by_client_id(&self, client_id: &str) -> Vec<ClientSecret>;
+impl DieselClientSecretRepository {
+    pub fn new(pool: AsyncSqlitePool) -> DieselClientSecretRepository {
+        DieselClientSecretRepository { pool }
+    }
 }
 
-#[derive(Clone, Default)]
-pub struct InMemoryClientSecretRepository {
-    store: Arc<Mutex<HashMap<Uuid, ClientSecret>>>,
+impl ClientSecretRepository for DieselClientSecretRepository {
+    async fn find_all_by_client_id(&self, client_id: &str) -> Result<Vec<ClientSecret>> {
+        let connection = &mut self.pool.get()
+            .await
+            .with_context(|| "Failed to get connection from pool")?;
+
+        dsl::client_secrets
+            .filter(dsl::client_id.eq(client_id))
+            .load(connection)
+            .await
+            .with_context(|| "Error querying client secret database")
+    }
 }
 
-impl InMemoryClientSecretRepository {
-    pub fn new() -> Self {
-        Self {
-            store: Arc::new(Mutex::new(HashMap::from([
-                Self::create_hashed_entry("aardvark", b"badger"),
-            ])))
+#[cfg(test)]
+pub mod test_support {
+    use super::*;
+    use crate::util::diesel_migrations::run_diesel_migrations;
+    impl DieselClientSecretRepository {
+        pub async fn new_in_memory() -> Result<DieselClientSecretRepository> {
+            let pool = crate::util::diesel_pool::create_pool(":memory:")?;
+            run_diesel_migrations(&pool).await?;
+            Ok(DieselClientSecretRepository::new(pool))
         }
     }
-
-    // TODO - Remove once we've got a means of creating new clients
-    fn create_hashed_entry(client_id: &str, client_secret: &[u8]) -> (Uuid, ClientSecret) {
-
-        // Allowed because this isn't intended to be production used code
-        #![allow(clippy::unwrap_used)]
-
-        use argon2::Argon2;
-        use argon2::password_hash::Salt;
-        use argon2::password_hash::SaltString;
-        use argon2::password_hash::PasswordHasher;
-
-        let argon2 = Argon2::default();
-        let salt = vec![0u8; Salt::RECOMMENDED_LENGTH];
-        let salt_string = SaltString::encode_b64(&salt).unwrap();
-        let hashed = argon2.hash_password(client_secret, &salt_string).unwrap().to_string();
-
-        let client_secret_id = Uuid::new_v4();
-
-        (client_secret_id, ClientSecret {
-            //id: client_secret_id,
-            client_id: ClientId(String::from(client_id)),
-            hashed_secret: hashed
-        })
-    }
-
-    fn lock_store(&self) -> MutexGuard<'_, HashMap<Uuid, ClientSecret>> {
-        self.store.lock().unwrap_or_else(PoisonError::into_inner)
+    impl std::fmt::Debug for DieselClientSecretRepository {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("DieselClientSecretRepository")
+                .field("pool.manager", &self.pool.manager())
+                .finish()
+        }
     }
 }
 
-impl ClientSecretRepository for InMemoryClientSecretRepository {
-    // fn find_by_id(&self, id: &Uuid) -> Option<ClientSecret> {
-    //     self.lock_store().get(id).cloned()
-    // }
-    // fn find_all_by_client(&self, client_id: &ClientId) -> Vec<ClientSecret> {
-    //     self.lock_store().values().filter(|secret| &secret.client_id == client_id).cloned().collect()
-    // }
-    fn find_all_by_client_id(&self, client_id: &str) -> Vec<ClientSecret> {
-        self.lock_store().values().filter(|secret| secret.client_id.value() == client_id).cloned().collect()
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use assertables::*;
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn should_be_able_to_retrieve_all_secrets_for_a_client() {
+        let under_test = assert_ok!(DieselClientSecretRepository::new_in_memory().await);
+        let result = assert_ok!(under_test.find_all_by_client_id("aardvark").await);
+        assert_len_eq_x!(&result, 1);
+        assert_eq!(result[0].id, "a9747e2e-34c6-4870-b792-fc7c004baef7".into());
+        assert_eq!(result[0].client_id, ClientId("aardvark".into()));
+        assert_eq!(result[0].hash, "$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAAA$H95jwDvk045Fb8JUntQP8pIQWj9WA4ETxG4jMUvf7wA");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn should_return_empty_vector_for_a_client_id_with_no_secrets() {
+        let under_test = assert_ok!(DieselClientSecretRepository::new_in_memory().await);
+        let result = assert_ok!(under_test.find_all_by_client_id("badger").await);
+        assert_is_empty!(result);
     }
 }

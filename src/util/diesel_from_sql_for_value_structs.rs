@@ -10,7 +10,8 @@ macro_rules! diesel_from_sql_for_value_structs {
         $(
             impl<B: diesel::backend::Backend> diesel::deserialize::FromSql<$sql_type, B> for $struct_name
             where
-                $field_type: diesel::deserialize::FromSql<$sql_type, B>
+                $field_type: diesel::deserialize::FromSql<$sql_type, B>,
+                $struct_name: $crate::util::value_struct::ValueStruct,
             {
                 fn from_sql(raw: <B as diesel::backend::Backend>::RawValue<'_>) -> diesel::deserialize::Result<$struct_name> {
                     $field_type::from_sql(raw).map($struct_name)

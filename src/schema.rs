@@ -23,6 +23,15 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(access_tokens -> client_configurations (client_id));
+diesel::table! {
+    client_secrets (id) {
+        id -> Binary,
+        client_id -> Text,
+        hash -> Text,
+    }
+}
 
-diesel::allow_tables_to_appear_in_same_query!(access_tokens, client_configurations,);
+diesel::joinable!(access_tokens -> client_configurations (client_id));
+diesel::joinable!(client_secrets -> client_configurations (client_id));
+
+diesel::allow_tables_to_appear_in_same_query!(access_tokens, client_configurations, client_secrets,);

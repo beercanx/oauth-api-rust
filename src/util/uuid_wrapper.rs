@@ -46,3 +46,14 @@ impl FromSql<Binary, Sqlite> for UuidWrapper {
         Ok(uuid)
     }
 }
+
+#[cfg(test)]
+pub mod test_support {
+    use super::*;
+    use assertables::*;
+    impl From<&str> for UuidWrapper {
+        fn from(uuid: &str) -> UuidWrapper {
+            UuidWrapper(assert_ok!(Uuid::parse_str(uuid)))
+        }
+    }
+}

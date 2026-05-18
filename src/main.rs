@@ -23,7 +23,7 @@ use anyhow::{Context, Result};
 use axum::{serve, Router};
 use client::authentication::ClientAuthenticationService;
 use client::configuration::DieselClientConfigurationRepository;
-use client::secret::InMemoryClientSecretRepository;
+use client::secret::DieselClientSecretRepository;
 use token::repository::DieselAccessTokenRepository;
 use token_exchange::TokenExchangeState;
 use token_introspection::TokenIntrospectionState;
@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
 
     let access_token_repository = DieselAccessTokenRepository::new(pool.clone());
 
-    let client_secret_repository = InMemoryClientSecretRepository::new();
+    let client_secret_repository = DieselClientSecretRepository::new(pool.clone());
     let client_configuration_repository = DieselClientConfigurationRepository::new(pool.clone());
 
     let client_authenticator = ClientAuthenticationService::new(
