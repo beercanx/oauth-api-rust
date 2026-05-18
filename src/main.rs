@@ -33,7 +33,6 @@ use tokio::net::TcpListener;
 //  - Token endpoint
 //  - Client authentication
 //  - User authentication
-//  - Access token repository
 //  - Introspection endpoint
 //  - Logging
 //  - Metrics
@@ -45,7 +44,6 @@ use tokio::net::TcpListener;
 //  - CORS
 //  - Sessions [authenticate/authenticated]
 //  - Access Log
-//  - Database support
 //  - Error handling, including 500s
 #[tokio::main]
 async fn main() -> Result<()> {
