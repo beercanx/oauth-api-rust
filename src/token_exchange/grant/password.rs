@@ -1,15 +1,18 @@
-use std::collections::HashMap;
-use serde::Deserialize;
-use ClientPrincipal::Confidential;
-use GrantType::Password;
 use crate::client::authentication::ClientAuthenticator;
 use crate::client::{ClientPrincipal, ConfidentialClient, GrantType};
-use crate::token::{AccessToken, TokenType};
+use crate::scope::parser::parse_scopes;
+use crate::scope::Scopes;
 use crate::token::repository::TokenRepository;
+use crate::token::{AccessToken, TokenType};
 use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
 use crate::token_exchange::route::TokenExchangeState;
-use crate::scope::Scopes;
-use crate::scope::parser::parse_scopes;
+use crate::util::uuid_wrapper::UuidWrapper;
+use anyhow::Result;
+use chrono::{Duration, Utc};
+use serde::Deserialize;
+use std::collections::HashMap;
+use ClientPrincipal::Confidential;
+use GrantType::Password;
 
 #[derive(Deserialize, Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -23,36 +26,46 @@ pub struct PasswordGrantRequest {
 pub async fn handle_password_grant<A, C>(
     state: TokenExchangeState<A, C>,
     request: PasswordGrantRequest
-) -> TokenExchangeResponse
+) -> Result<TokenExchangeResponse>
 where
     A: TokenRepository<AccessToken>,
     C: ClientAuthenticator,
 {
 
     // TODO - Implement it...
+    
+    let issued_at = Utc::now();
 
     let access_token = AccessToken {
-        id: uuid::Uuid::new_v4(),
+        id: UuidWrapper::random(),
+        username: request.username,
+        client_id: request.principal.id().clone(),
+        scopes: request.scopes.unwrap_or_default(),
+        issued_at: issued_at.naive_utc(),
+        expires_at: (issued_at + Duration::hours(2)).naive_utc(),
+        not_before: (issued_at - Duration::minutes(1)).naive_utc(),
     };
 
-    state.access_token_repository.save_token(&access_token);
+    state.access_token_repository.save_token(&access_token).await?;
 
-    TokenExchangeResponse::Success {
-        access_token: access_token.id,
-        token_type: TokenType::Bearer,
-        expires_in: 7200,
-        refresh_token: Some(uuid::Uuid::new_v4()),
-        scope: request.scopes,
-        state: None,
-    }
+    Ok(
+        TokenExchangeResponse::Success {
+            access_token: access_token.id,
+            token_type: TokenType::Bearer,
+            expires_in: 7200,
+            refresh_token: Some(UuidWrapper::random()),
+            scope: Some(access_token.scopes),
+            state: None,
+        }
+    )
 }
 
-pub fn validate_password_grant(principal: ClientPrincipal, request: HashMap<String, String>) -> Result<PasswordGrantRequest, TokenExchangeResponse> {
+pub fn validate_password_grant(principal: ClientPrincipal, request: &HashMap<String, String>) -> Result<PasswordGrantRequest, TokenExchangeResponse> {
     let client = match principal {
         Confidential(client) if client.can_perform_grant_type(&Password) => client,
         _ => Err(TokenExchangeResponse::Failure {
             error: ErrorType::UnauthorizedClient,
-            error_description: Some(format!("not authorized to: {:?}", Password)),
+            error_description: Some(format!("not authorized to: {Password:?}")),
         })?,
     };
 
@@ -95,22 +108,23 @@ mod unit_tests {
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/PasswordValidationTest.kt
 
     use super::*;
-    use assertables::*;
-    use std::collections::HashSet;
-    use crate::client::ClientType;
     use crate::client::configuration::ClientConfiguration;
+    use crate::client::ClientType;
+    use crate::map_of;
     use crate::scope::Scope;
     use crate::token_exchange::response::ErrorType;
-    use crate::map_of;
+    use assertables::*;
+    use std::collections::HashSet;
 
     mod client {
         use super::*;
+        use crate::client::configuration::{AllowedActions, AllowedGrantTypes, AllowedScopes, RedirectUris};
 
         #[test]
         fn should_return_invalid_request_for_a_public_client() {
             let result = validate_password_grant(
                 ClientPrincipal::new_public_principal("aardvark"),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "password" => "<REDACTED>",
                     "scope" => "read write",
@@ -131,12 +145,12 @@ mod unit_tests {
                 ClientPrincipal::new_principal(ClientConfiguration {
                     client_id: String::from("unauthorised").into(),
                     client_type: ClientType::Confidential,
-                    redirect_uris: Default::default(),
-                    allowed_scopes: Default::default(),
-                    allowed_actions: Default::default(),
-                    allowed_grant_types: Default::default(),
+                    redirect_uris: RedirectUris(HashSet::default()),
+                    allowed_scopes: AllowedScopes(HashSet::default()),
+                    allowed_actions: AllowedActions(HashSet::default()),
+                    allowed_grant_types: AllowedGrantTypes(HashSet::default()),
                 }),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "password" => "<REDACTED>",
                     "scope" => "read write",
@@ -155,7 +169,7 @@ mod unit_tests {
         fn should_return_invalid_request_on_missing_username() {
             let result = validate_password_grant(
                 ClientPrincipal::new_confidential_principal("aardvark"),
-                map_of! {
+                &map_of! {
                     "password" => "<REDACTED>",
                     "scope" => "read write",
                 },
@@ -177,7 +191,7 @@ mod unit_tests {
         fn should_return_invalid_request_on_blank_username() {
             let result = validate_password_grant(
                 ClientPrincipal::new_confidential_principal("aardvark"),
-                map_of! {
+                &map_of! {
                     "username" => " ",
                     "password" => "<REDACTED>",
                     "scope" => "read write",
@@ -196,7 +210,7 @@ mod unit_tests {
         fn should_return_invalid_request_on_missing_password() {
             let result = validate_password_grant(
                 ClientPrincipal::new_confidential_principal("aardvark"),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "scope" => "read write",
                 },
@@ -213,12 +227,13 @@ mod unit_tests {
 
     mod scope {
         use super::*;
+        use crate::client::configuration::{AllowedActions, AllowedGrantTypes, AllowedScopes, RedirectUris};
 
         #[test]
         fn should_return_invalid_request_on_blank_scope() {
             let result = validate_password_grant(
                 ClientPrincipal::new_confidential_principal("aardvark"),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "password" => "<REDACTED>",
                     "scope" => " ",
@@ -239,12 +254,12 @@ mod unit_tests {
                 ClientPrincipal::new_principal(ClientConfiguration {
                     client_id: String::from("aardvark").into(),
                     client_type: ClientType::Confidential,
-                    redirect_uris: Default::default(),
-                    allowed_scopes: Default::default(),
-                    allowed_actions: Default::default(),
-                    allowed_grant_types: HashSet::from([Password]),
+                    redirect_uris: RedirectUris(HashSet::default()),
+                    allowed_scopes: AllowedScopes(HashSet::default()),
+                    allowed_actions: AllowedActions(HashSet::default()),
+                    allowed_grant_types: AllowedGrantTypes(HashSet::from([Password])),
                 }),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "password" => "<REDACTED>",
                     "scope" => "invalid",
@@ -263,7 +278,7 @@ mod unit_tests {
         fn should_return_invalid_request_with_an_invalid_scope_and_a_valid_scope() {
             let result = validate_password_grant(
                 ClientPrincipal::new_confidential_principal("aardvark"),
-                map_of! { "username" => "aardvark",
+                &map_of! { "username" => "aardvark",
                     "password" => "<REDACTED>",
                     "scope" => "basic cicada",
                 },
@@ -281,7 +296,7 @@ mod unit_tests {
         fn should_return_invalid_request_with_an_duplicated_valid_scopes() {
             let result = validate_password_grant(
                 ClientPrincipal::new_confidential_principal("aardvark"),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "password" => "<REDACTED>",
                     "scope" => "basic basic",
@@ -302,12 +317,12 @@ mod unit_tests {
                 ClientPrincipal::new_principal(ClientConfiguration {
                     client_id: String::from("aardvark").into(),
                     client_type: ClientType::Confidential,
-                    redirect_uris: Default::default(),
-                    allowed_scopes: HashSet::from([Scope::Read]),
-                    allowed_actions: Default::default(),
-                    allowed_grant_types: HashSet::from([Password]),
+                    redirect_uris: RedirectUris(HashSet::default()),
+                    allowed_scopes: AllowedScopes(HashSet::from([Scope::Read])),
+                    allowed_actions: AllowedActions(HashSet::default()),
+                    allowed_grant_types: AllowedGrantTypes(HashSet::from([Password])),
                 }),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "password" => "<REDACTED>",
                     "scope" => "write",
@@ -330,7 +345,7 @@ mod unit_tests {
         fn should_return_valid_request_if_only_scope_is_not_provided() {
             let result = validate_password_grant(
                 ClientPrincipal::new_confidential_principal("aardvark"),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "password" => "<REDACTED>",
                 },
@@ -350,7 +365,7 @@ mod unit_tests {
         fn should_return_valid_request_if_only_one_scope_is_provided() {
             let result = validate_password_grant(
                 ClientPrincipal::new_confidential_principal("aardvark"),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "password" => "<REDACTED>",
                     "scope" => "basic",
@@ -371,7 +386,7 @@ mod unit_tests {
         fn should_return_valid_request_if_multiple_scopes_are_provided() {
             let result = validate_password_grant(
                 ClientPrincipal::new_confidential_principal("aardvark"),
-                map_of! {
+                &map_of! {
                     "username" => "aardvark",
                     "password" => "<REDACTED>",
                     "scope" => "basic read write",

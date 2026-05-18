@@ -1,6 +1,7 @@
-use serde::Serialize;
 use crate::scope::Scopes;
 use crate::token::TokenType;
+use crate::util::uuid_wrapper::UuidWrapper;
+use serde::Serialize;
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Serialize, Eq, PartialEq)]
@@ -10,7 +11,7 @@ pub enum TokenExchangeResponse {
     Success {
 
         // The access token issued by the authorization server.
-        access_token: uuid::Uuid,
+        access_token: UuidWrapper,
 
         // The type of the token issued as described in
         // https://www.rfc-editor.org/rfc/rfc6749#section-7.1
@@ -26,7 +27,7 @@ pub enum TokenExchangeResponse {
         // access tokens using the same authorization grant as described in
         // https://www.rfc-editor.org/rfc/rfc6749#section-6
         #[serde(skip_serializing_if = "Option::is_none")]
-        refresh_token: Option<uuid::Uuid>,
+        refresh_token: Option<UuidWrapper>,
 
         // OPTIONAL if identical to the scope requested by the client; otherwise,
         // REQUIRED. The scope of the access token as described by
@@ -68,8 +69,7 @@ impl TokenExchangeResponse {
     }
 }
 
-#[cfg_attr(test, derive(Debug))]
-#[derive(Serialize, Eq, PartialEq)]
+#[derive(Serialize, Debug, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorType {
 
@@ -87,13 +87,13 @@ pub enum ErrorType {
     // authorization server MUST respond with an HTTP 401 (Unauthorized) status code
     // and include the "WWW-Authenticate" response header field matching the
     // authentication scheme used by the client.
-    InvalidClient,
+    // TODO - InvalidClient,
 
     // The provided authorization grant (e.g., authorization code,
     // resource owner credentials) or refresh token is invalid, expired, revoked,
     // does not match the redirection URI used in the authorization request, or was
     // issued to another client.
-    InvalidGrant,
+    // TODO - InvalidGrant,
 
     // The requested scope is invalid, unknown, malformed, or exceeds
     // the scope granted by the resource owner.

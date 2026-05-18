@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::{middleware, Router};
@@ -33,11 +34,14 @@ pub struct TokenExchangeState<A: TokenRepository<AccessToken>, C: ClientAuthenti
 async fn token_exchange_handler<A: TokenRepository<AccessToken>, C: ClientAuthenticator>(
     State(state): State<TokenExchangeState<A, C>>,
     TokenExchangeForm(request): TokenExchangeForm,
-) -> (StatusCode, Json<TokenExchangeResponse>) {
+) -> Result<(StatusCode, Json<TokenExchangeResponse>), StatusCode> {
 
     let result = match request {
         TokenExchangeRequest::Password(password_grant_request) => {
-            handle_password_grant(state, password_grant_request).await
+            match handle_password_grant(state, password_grant_request).await { 
+                Ok(response) => response,
+                Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)?,  // TODO - Add error logging
+            }
         },
     };
 
@@ -46,7 +50,7 @@ async fn token_exchange_handler<A: TokenRepository<AccessToken>, C: ClientAuthen
         TokenExchangeResponse::Success { .. } => StatusCode::OK,
     };
 
-    (status, Json(result))
+    Ok((status, Json(result)))
 }
 
 #[cfg(test)]
@@ -63,6 +67,10 @@ mod integration_tests {
     use base64::prelude::*;
     use serde_json::Value;
     use tower::ServiceExt;
+    use crate::client::authentication::ClientAuthenticationService;
+    use crate::client::configuration::DieselClientConfigurationRepository;
+    use crate::client::secret::DieselClientSecretRepository;
+    use crate::token::repository::DieselAccessTokenRepository;
 
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/TokenRouteIntegrationTests.kt
 
@@ -71,16 +79,14 @@ mod integration_tests {
     const TEST_CLIENT_USERNAME: &str = "aardvark";
     const TEST_CLIENT_PASSWORD: &str = "badger";
 
-    macro_rules! under_test {
-        () => {
-            route(TokenExchangeState {
-                access_token_repository: crate::token::repository::InMemoryTokenRepository::new(),
-                client_authenticator: crate::client::authentication::ClientAuthenticationService::new(
-                    crate::client::secret::InMemoryClientSecretRepository::new(),
-                    crate::client::configuration::InMemoryClientConfigurationRepository::new(),
-                ),
-            })
-        };
+    async fn under_test() -> Router<()> {
+        route(TokenExchangeState {
+            access_token_repository: assert_ok!(DieselAccessTokenRepository::new_in_memory().await),
+            client_authenticator: ClientAuthenticationService::new(
+                assert_ok!(DieselClientSecretRepository::new_in_memory().await),
+                assert_ok!(DieselClientConfigurationRepository::new_in_memory().await),
+            ),
+        })
     }
 
     async fn extract_json_body(response: Response<Body>) -> HashMap<String, Value> {
@@ -89,7 +95,7 @@ mod integration_tests {
     }
 
     fn basic_auth(username: &str, password: &str) -> String {
-        format!("Basic {}", BASE64_STANDARD.encode(format!("{}:{}", username, password)))
+        format!("Basic {}", BASE64_STANDARD.encode(format!("{username}:{password}")))
     }
 
     mod invalid_http_request {
@@ -98,9 +104,9 @@ mod integration_tests {
         macro_rules! http_method_test {
             ($($name:ident: $method:expr,)*) => {
             $(
-                #[tokio::test]
+                #[tokio::test(flavor = "multi_thread")]
                 async fn $name() {
-                    let router = under_test!();
+                    let router = under_test().await;
 
                     let request = assert_ok!(Request::builder()
                         .method($method)
@@ -128,9 +134,9 @@ mod integration_tests {
             should_not_support_http_method_connect: Method::CONNECT,
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_require_client_authentication_on_missing_authorization_header() {
-            let router = under_test!();
+            let router = under_test().await;
 
             let request = assert_ok!(
                 Request::builder()
@@ -145,9 +151,9 @@ mod integration_tests {
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_require_client_authentication_on_invalid_confidential_client_credentials() {
-            let router = under_test!();
+            let router = under_test().await;
 
             let request = assert_ok!(
                 Request::builder()
@@ -163,9 +169,9 @@ mod integration_tests {
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_require_client_authentication_on_invalid_public_client_credentials() {
-            let router = under_test!();
+            let router = under_test().await;
 
             let request = assert_ok!(
                 Request::builder()
@@ -180,9 +186,9 @@ mod integration_tests {
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_require_client_authentication_via_only_one_method() {
-            let router = under_test!();
+            let router = under_test().await;
 
             let request = assert_ok!(
                 Request::builder()
@@ -201,9 +207,9 @@ mod integration_tests {
         macro_rules! content_type_test {
             ($($name:ident: $value:expr,)*) => {
             $(
-                #[tokio::test]
+                #[tokio::test(flavor = "multi_thread")]
                 async fn $name() {
-                    let router = under_test!();
+                    let router = under_test().await;
 
                     let (content_type, body) = $value;
 
@@ -225,7 +231,7 @@ mod integration_tests {
         }
 
         content_type_test! {
-            should_not_support_application_xml: ("xml", r#"<grantType>aardvark</grantType>"#),
+            should_not_support_application_xml: ("xml", r"<grantType>aardvark</grantType>"),
             should_not_support_application_json: ("json", r#"{"grant_type":"aardvark"}"#),
         }
     }
@@ -233,10 +239,10 @@ mod integration_tests {
     mod invalid_token_request {
         use super::*;
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_return_bad_request_for_invalid_token_exchange_requests() {
 
-            let router = under_test!();
+            let router = under_test().await;
 
             let request = assert_ok!(
                 Request::builder()
@@ -260,9 +266,9 @@ mod integration_tests {
     mod success_token_request {
         use super::*;
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         async fn should_return_ok_for_valid_password_grants() {
-            let router = under_test!();
+            let router = under_test().await;
 
             let request = assert_ok!(Request::builder()
                 .method(Method::POST)
@@ -284,10 +290,10 @@ mod integration_tests {
             assert_none!(body.get("state"));
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         #[ignore = "authorization code not yet implemented"] // TODO - Re-enable once implemented
         async fn should_return_ok_for_valid_authorization_code_grants() {
-            let router = under_test!();
+            let router = under_test().await;
 
             let request = assert_ok!(Request::builder()
                 .method(Method::POST)
@@ -308,10 +314,10 @@ mod integration_tests {
             assert_some_eq_x!(body.get("scope"), "basic");
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         #[ignore = "refresh grant not yet implemented"] // TODO - Re-enable once implemented
         async fn should_return_ok_for_valid_refresh_token_grant() {
-            let router = under_test!();
+            let router = under_test().await;
 
             let request = assert_ok!(Request::builder()
                 .method(Method::POST)
@@ -332,10 +338,10 @@ mod integration_tests {
             assert_some_eq_x!(body.get("scope"), "basic");
         }
 
-        #[tokio::test]
+        #[tokio::test(flavor = "multi_thread")]
         #[ignore = "assertion grant not yet implemented"] // TODO - Re-enable once implemented
         async fn should_return_ok_for_valid_assertion_grant() {
-            let router = under_test!();
+            let router = under_test().await;
 
             let request = assert_ok!(
                 Request::builder()

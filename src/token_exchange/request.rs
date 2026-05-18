@@ -1,14 +1,14 @@
-use std::collections::HashMap;
-use axum::extract::{FromRequest, Request};
-use axum::extract::rejection::FormRejection;
-use axum::{Form, Json};
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-use serde::Deserialize;
 use crate::client::{ClientPrincipal, GrantType};
 use crate::token_exchange::grant::password::{validate_password_grant, PasswordGrantRequest};
 use crate::token_exchange::request::TokenExchangeRequest::Password;
 use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
+use axum::extract::rejection::FormRejection;
+use axum::extract::{FromRequest, Request};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::{Form, Json};
+use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Deserialize, Eq, PartialEq)]
 #[cfg_attr(test, derive(Debug))]
@@ -40,8 +40,8 @@ where
             }))?;
 
         match Form::<HashMap<String, String>>::from_request(req, state).await {
-            Err(rejection) => Err(handle_form_rejection(rejection)),
-            Ok(Form(request)) => match validate_grant_type(principal, request) {
+            Err(rejection) => Err(handle_form_rejection(&rejection)),
+            Ok(Form(request)) => match validate_grant_type(principal, &request) {
                 Err(failure) => Err(handle_validation_failure(failure)),
                 Ok(valid) => Ok(valid),
             }
@@ -49,28 +49,26 @@ where
     }
 }
 
-pub fn validate_grant_type(principal: ClientPrincipal, request: HashMap<String, String>) -> Result<TokenExchangeForm, TokenExchangeResponse> {
-    match request.get("grant_type").map(|s| s.parse::<GrantType>()) {
-
+pub fn validate_grant_type(principal: ClientPrincipal, request: &HashMap<String, String>) -> Result<TokenExchangeForm, TokenExchangeResponse> {
+    match request.get("grant_type") {
         None => Err(TokenExchangeResponse::missing_parameter("grant_type")),
-
-        Some(Err(error_message)) => Err(
-            TokenExchangeResponse::Failure {
-                error: ErrorType::UnsupportedGrantType,
-                error_description: Some(error_message),
-            }
-        ),
-
-        Some(Ok(grant_type)) if !principal.can_perform_grant_type(&grant_type) => Err(
-            TokenExchangeResponse::Failure {
-                error: ErrorType::UnauthorizedClient,
-                error_description: Some(format!("not authorized to: {:?}", grant_type)),
-            }
-        ),
-
-        Some(Ok(GrantType::Password)) => Ok(TokenExchangeForm(
-            Password(validate_password_grant(principal, request)?)
-        )),
+        Some(raw_grant_type) => match raw_grant_type.parse::<GrantType>() {
+            Err(_) => Err(
+                TokenExchangeResponse::Failure {
+                    error: ErrorType::UnsupportedGrantType,
+                    error_description: Some(format!("unsupported: {raw_grant_type}")),
+                }
+            ),
+            Ok(grant_type) if !principal.can_perform_grant_type(&grant_type) => Err(
+                TokenExchangeResponse::Failure {
+                    error: ErrorType::UnauthorizedClient,
+                    error_description: Some(format!("not authorized to: {grant_type:?}")),
+                }
+            ),
+            Ok(GrantType::Password) => Ok(TokenExchangeForm(
+                Password(validate_password_grant(principal, request)?)
+            )),
+        }
     }
 }
 
@@ -78,7 +76,7 @@ fn handle_validation_failure(failure: TokenExchangeResponse) -> Response {
     (StatusCode::BAD_REQUEST, Json(failure)).into_response()
 }
 
-fn handle_form_rejection(rejection: FormRejection) -> Response {
+fn handle_form_rejection(rejection: &FormRejection) -> Response {
     (rejection.status(), Json(TokenExchangeResponse::Failure {
         error: ErrorType::InvalidRequest,
         error_description: Some(rejection.body_text()),
@@ -91,10 +89,11 @@ mod unit_tests {
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/TokenRequestValidationTest.kt
 
     use super::*;
-    use assertables::*;
+    use crate::client::configuration::{AllowedActions, AllowedGrantTypes, AllowedScopes, ClientConfiguration, RedirectUris};
     use crate::client::ClientType;
-    use crate::client::configuration::ClientConfiguration;
     use crate::token_exchange::request::validate_grant_type;
+    use assertables::*;
+    use std::collections::HashSet;
 
     macro_rules! input_parameters {
         ($($k:expr => $v:expr),* $(,)?) => {{
@@ -123,14 +122,14 @@ mod unit_tests {
     validate_err! {
         should_return_invalid_request_on_missing_grant_type,
         ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! {},
+        &input_parameters! {},
         TokenExchangeResponse::missing_parameter("grant_type")
     }
 
     validate_err! {
         should_return_invalid_request_on_blank_grant_type,
         ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "grant_type" => " " },
+        &input_parameters! { "grant_type" => " " },
         TokenExchangeResponse::Failure {
             error: ErrorType::UnsupportedGrantType,
             error_description: Some("unsupported:  ".into())
@@ -140,7 +139,7 @@ mod unit_tests {
     validate_err! {
         should_return_invalid_request_on_unsupported_grant_type,
         ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "grant_type" => "aardvark" },
+        &input_parameters! { "grant_type" => "aardvark" },
         TokenExchangeResponse::Failure {
             error: ErrorType::UnsupportedGrantType,
             error_description: Some("unsupported: aardvark".into())
@@ -152,12 +151,12 @@ mod unit_tests {
         ClientPrincipal::new_principal(ClientConfiguration {
             client_id: String::from("invalid").into(),
             client_type: ClientType::Confidential,
-            redirect_uris: Default::default(),
-            allowed_scopes: Default::default(),
-            allowed_actions: Default::default(),
-            allowed_grant_types: Default::default(),
+            redirect_uris: RedirectUris(HashSet::default()),
+            allowed_scopes: AllowedScopes(HashSet::default()),
+            allowed_actions: AllowedActions(HashSet::default()),
+            allowed_grant_types: AllowedGrantTypes(HashSet::default()),
         }),
-        input_parameters! { "grant_type" => "password" },
+        &input_parameters! { "grant_type" => "password" },
         TokenExchangeResponse::Failure {
             error: ErrorType::UnauthorizedClient,
             error_description: Some("not authorized to: Password".into())
@@ -167,11 +166,11 @@ mod unit_tests {
     validate_ok! {
         should_return_valid_request_for_password_grant_type,
         ClientPrincipal::new_confidential_principal("aardvark"),
-        input_parameters! { "grant_type" => "password", "username" => "aardvark", "password" => "" },
+        &input_parameters! { "grant_type" => "password", "username" => "aardvark", "password" => "" },
         TokenExchangeForm(Password(PasswordGrantRequest {
             principal: ClientPrincipal::new_confidential_client("aardvark"),
             username: "aardvark".into(),
-            password: "".into(),
+            password: String::new(),
             scopes: None,
         }))
     }

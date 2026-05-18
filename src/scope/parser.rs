@@ -11,8 +11,8 @@ pub fn parse_scopes(maybe_space_delimited_scopes: Option<&String>) -> Result<Opt
             }
 
             let raw_scopes = space_delimited_scopes
-                .split(" ")
-                .map(|s| s.trim())
+                .split(' ')
+                .map(str::trim)
                 .filter(|s| !s.is_empty())
                 .map(String::from)
                 .collect::<Vec<String>>();

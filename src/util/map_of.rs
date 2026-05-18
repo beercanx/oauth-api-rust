@@ -34,6 +34,7 @@ mod test {
 
     #[test]
     fn should_be_able_to_create_a_string_to_enum_map() {
+        #[allow(clippy::zero_sized_map_values)]
         let map: HashMap<String, GrantType> = map_of! {
             "password" => GrantType::Password,
         };

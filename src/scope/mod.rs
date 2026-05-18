@@ -1,29 +1,39 @@
 pub mod parser;
 
+use crate::{diesel_from_sql_for_json_fields, diesel_to_sql_for_json_fields, disable_deserialization};
+use diesel::{AsExpression, FromSqlRow};
+use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashSet;
-use serde::{Serialize, Serializer};
-use crate::disable_deserialization;
-use crate::enum_with_from_str;
+use strum_macros::Display;
+use strum_macros::EnumIter;
+use strum_macros::EnumString;
 
-enum_with_from_str! {
-    #[derive(Hash, Eq, PartialEq, Clone)]
-    #[cfg_attr(test, derive(Debug))]
-    pub enum Scope {
-        Basic: "basic",
-        Read: "read",
-        Write: "write",
-    }
+#[derive(EnumString, EnumIter, Display, Serialize, Deserialize, Debug, Hash, Eq, PartialEq, Clone)]
+#[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum Scope {
+    Basic,
+    Read,
+    Write,
 }
 
-#[derive(Eq, PartialEq)]
-#[cfg_attr(test, derive(Debug))]
+#[derive(FromSqlRow, AsExpression, Default, Debug, Eq, PartialEq, Clone)]
+#[diesel(sql_type = diesel::sql_types::Binary)]
 pub struct Scopes(pub HashSet<Scope>);
+
+diesel_from_sql_for_json_fields! {
+    Scopes(HashSet<Scope>);
+}
+
+diesel_to_sql_for_json_fields! {
+    Scopes(HashSet<Scope>);
+}
 
 impl Serialize for Scopes {
     // Serialize scopes as a space delimited list
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.0.iter()
-            .map(|scope| scope.to_string())
+            .map(ToString::to_string)
             .collect::<Vec<String>>()
             .join(" ")
             .serialize(serializer)
@@ -31,5 +41,4 @@ impl Serialize for Scopes {
 }
 
 // To enable us to trust Scope is valid, we don't allow direct deserialization of Scope.
-disable_deserialization!(Scope);
 disable_deserialization!(Scopes);

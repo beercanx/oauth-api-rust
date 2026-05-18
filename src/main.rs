@@ -5,7 +5,9 @@
     clippy::expect_used,
     clippy::panic,
 )]
-
+#![warn(
+    clippy::pedantic,
+)]
 mod scope;
 mod token;
 mod token_exchange;
@@ -13,23 +15,24 @@ mod token_introspection;
 mod graceful_shutdown;
 mod client;
 mod util;
+mod schema;
 
+use crate::util::diesel_migrations::run_diesel_migrations;
+use crate::util::diesel_pool::create_pool;
+use anyhow::{Context, Result};
 use axum::{serve, Router};
-use std::io;
-use tokio::net::TcpListener;
 use client::authentication::ClientAuthenticationService;
-use client::configuration::InMemoryClientConfigurationRepository;
-use client::secret::InMemoryClientSecretRepository;
-use token::AccessToken;
-use token::repository::InMemoryTokenRepository;
+use client::configuration::DieselClientConfigurationRepository;
+use client::secret::DieselClientSecretRepository;
+use token::repository::DieselAccessTokenRepository;
 use token_exchange::TokenExchangeState;
 use token_introspection::TokenIntrospectionState;
+use tokio::net::TcpListener;
 
 // TODO List:
 //  - Token endpoint
 //  - Client authentication
 //  - User authentication
-//  - Access token repository
 //  - Introspection endpoint
 //  - Logging
 //  - Metrics
@@ -41,14 +44,22 @@ use token_introspection::TokenIntrospectionState;
 //  - CORS
 //  - Sessions [authenticate/authenticated]
 //  - Access Log
-//  - Database support
+//  - Error handling, including 500s
 #[tokio::main]
-async fn main() -> io::Result<()> {
+async fn main() -> Result<()> {
 
-    // TODO - Do we bother with services, or just continue with passing the repositories directly?
-    let access_token_repository = InMemoryTokenRepository::<AccessToken>::new();
-    let client_secret_repository = InMemoryClientSecretRepository::new();
-    let client_configuration_repository = InMemoryClientConfigurationRepository::new();
+    // TODO - Do we bother with services?
+    //        or just continue with passing the repositories directly?
+    //        or do we just pass connection pools and do await with services and repositories?
+
+    let pool = create_pool("file:target/db/diesel.sqlite3")?;
+
+    run_diesel_migrations(&pool).await?;
+
+    let access_token_repository = DieselAccessTokenRepository::new(pool.clone());
+
+    let client_secret_repository = DieselClientSecretRepository::new(pool.clone());
+    let client_configuration_repository = DieselClientConfigurationRepository::new(pool.clone());
 
     let client_authenticator = ClientAuthenticationService::new(
         client_secret_repository.clone(),
@@ -67,10 +78,15 @@ async fn main() -> io::Result<()> {
 
     // TODO - Extract into configuration
     let tcp_listener = TcpListener::bind("127.0.0.1:8080") // Change :8080 to :0 for a random port number
-        .await?;
+        .await
+        .with_context(|| "Failed to bind to TCP listener")?;
+
+    let local_address = tcp_listener
+        .local_addr()
+        .with_context(|| "Failed to get local tcp address")?;
 
     println!();
-    println!("Listening on http://{}", tcp_listener.local_addr()?);
+    println!("Listening on http://{local_address}");
     println!();
 
     serve(tcp_listener, application)

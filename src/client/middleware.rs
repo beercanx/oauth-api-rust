@@ -20,7 +20,8 @@ pub async fn require_confidential_client_authentication<C: ClientAuthenticator>(
         None => return Err(StatusCode::UNAUTHORIZED),
         Some(TypedHeader(Authorization(basic))) => {
             authenticator.authenticate_as_confidential_client(basic.username(), basic.password().as_bytes())
-                //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? // TODO - Add error logging
                 .ok_or(StatusCode::UNAUTHORIZED)?
         },
     };
@@ -51,23 +52,22 @@ pub async fn require_client_authentication<C: ClientAuthenticator>(
         .map(|(_, v)| v.into_owned());
 
     let principal = match (maybe_basic_auth, maybe_client_id) {
-        // Both are present → reject per RFC 6749 §2.3
-        (Some(_), Some(_)) => return Err(StatusCode::UNAUTHORIZED),
-
-        // Neither is present → reject
-        (None, None) => return Err(StatusCode::UNAUTHORIZED),
+        // Both are present → reject per RFC 6749 §2.3; or neither is present → reject
+        (Some(_), Some(_)) | (None, None) => return Err(StatusCode::UNAUTHORIZED),
 
         // Confidential client via Basic auth
         (Some(TypedHeader(Authorization(basic))), None) => {
             authenticator.authenticate_as_confidential_client(basic.username(), basic.password().as_bytes())
-                //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? // TODO - Add error logging
                 .map(ClientPrincipal::Confidential)
         },
 
         // Public client via body client_id
         (None, Some(client_id)) => {
             authenticator.authenticate_as_public_client(&client_id)
-                //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                .await
+                //.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? // TODO - Add error logging
                 .map(ClientPrincipal::Public)
         },
     };

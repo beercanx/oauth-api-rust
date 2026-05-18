@@ -60,7 +60,7 @@ jobs:
       - name: Clippy
         shell: bash
         run: >-
-          cargo clippy -q --all-targets --all-features --message-format=json
+          cargo clippy -q --all-targets --message-format=json
           | jq -r 'select(.reason == "compiler-message")
             | .message
             | . as $message
