@@ -1,5 +1,7 @@
 pub mod repository;
 
+use crate::client::ClientId;
+use crate::scope::Scopes;
 use crate::util::uuid_wrapper::UuidWrapper;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
@@ -22,8 +24,8 @@ pub enum TokenType {
 pub struct AccessToken {
     pub id: UuidWrapper,
     pub username: String,                   // TODO - Use AuthenticatedUser
-    pub client_id: String,                  // TODO - Use ClientId
-    pub scopes: String,                     // TODO - Use Scopes
+    pub client_id: ClientId,
+    pub scopes: Scopes,
     pub issued_at: NaiveDateTime,
     pub expires_at: NaiveDateTime,
     pub not_before: NaiveDateTime,
@@ -32,14 +34,16 @@ pub struct AccessToken {
 #[cfg(test)]
 pub mod test_support {
     use super::*;
+    use crate::scope::Scope;
     use chrono::Utc;
+    use std::collections::HashSet;
     impl AccessToken {
         pub fn new() -> AccessToken {
             AccessToken {
                 id: UuidWrapper::random(),
                 username: "aardvark".to_string(),
-                client_id: "badger".to_string(),
-                scopes: "basic".to_string(),
+                client_id: "badger".to_string().into(),
+                scopes: Scopes(HashSet::from([Scope::Basic])),
                 issued_at: Utc::now().naive_utc(),
                 expires_at: Utc::now().naive_utc(),
                 not_before: Utc::now().naive_utc(),

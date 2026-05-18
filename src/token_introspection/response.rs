@@ -1,6 +1,7 @@
-use serde::Serialize;
 use crate::client::ClientId;
+use crate::scope::Scopes;
 use crate::token::TokenType;
+use serde::Serialize;
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Serialize)]
@@ -26,7 +27,7 @@ pub enum TokenIntrospectionResponse {
          * in the format described in Section 3.3 of OAuth 2.0 <https://www.rfc-editor.org/rfc/rfc6749#section-3.3>.
          */
         #[serde(skip_serializing_if = "Option::is_none")]
-        scope: Option<String>, // TODO - Use an internal type and setup serialization for it.
+        scope: Option<Scopes>,
 
         /**
          * Client identifier for the OAuth 2.0 client that requested this token.

@@ -7,7 +7,6 @@ use crate::token::{AccessToken, TokenType};
 use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
 use crate::token_exchange::route::TokenExchangeState;
 use crate::util::uuid_wrapper::UuidWrapper;
-use crate::util::value_struct::ValueStruct;
 use anyhow::Result;
 use chrono::{Duration, Utc};
 use serde::Deserialize;
@@ -40,8 +39,8 @@ where
     let access_token = AccessToken {
         id: UuidWrapper::random(),
         username: request.username,
-        client_id: request.principal.id().value().clone(),
-        scopes: request.scopes.clone().map_or_else(String::new, |s|s.0.iter().map(ToString::to_string).collect::<Vec<String>>().join(" ")),
+        client_id: request.principal.id().clone(),
+        scopes: request.scopes.unwrap_or_default(),
         issued_at: issued_at.naive_utc(),
         expires_at: (issued_at + Duration::hours(2)).naive_utc(),
         not_before: (issued_at - Duration::minutes(1)).naive_utc(),
@@ -55,7 +54,7 @@ where
             token_type: TokenType::Bearer,
             expires_in: 7200,
             refresh_token: Some(UuidWrapper::random()),
-            scope: request.scopes,
+            scope: Some(access_token.scopes),
             state: None,
         }
     )

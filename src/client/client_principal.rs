@@ -66,6 +66,6 @@ macro_rules! define_principal {
             }
         }
 
-        disable_deserialization!($struct_name);
+        $crate::disable_deserialization!($struct_name);
     };
 }

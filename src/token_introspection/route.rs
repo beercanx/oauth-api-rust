@@ -65,7 +65,7 @@ async fn token_introspection_handler<A: TokenRepository<AccessToken>, C: ClientA
         Ok(Some(token)) => Ok(Json(TokenIntrospectionResponse::Active {
             active: true,
             scope: Some(token.scopes),
-            client_id: Some(token.client_id.into()),
+            client_id: Some(token.client_id),
             username: Some(token.username),
             token_type: Some(TokenType::Bearer),
             expires_at: Some(token.expires_at.and_utc().timestamp()),

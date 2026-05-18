@@ -19,17 +19,17 @@ impl<S: Send + Sync> FromRequest<S> for TokenIntrospectionForm {
         match Form::<HashMap<String, String>>::from_request(req, state).await {
             Err(rejection) => Err(handle_form_rejection(&rejection)),
             Ok(Form(request)) => match validate_request(&request) {
-                Err(failure) => Err(handle_validation_failure(failure)),
+                Err(failure) => Err(handle_validation_failure(*failure)),
                 Ok(valid) => Ok(valid),
             }
         }
     }
 }
 
-fn validate_request(request: &HashMap<String, String>) -> Result<TokenIntrospectionForm, TokenIntrospectionResponse> {
+fn validate_request(request: &HashMap<String, String>) -> Result<TokenIntrospectionForm, Box<TokenIntrospectionResponse>> {
     match request.get("token").map(|s| Uuid::parse_str(s)) {
-        None => Err(TokenIntrospectionResponse::missing_parameter("token")),
-        Some(Err(_)) => Err(TokenIntrospectionResponse::invalid_parameter("token")),
+        None => Err(Box::new(TokenIntrospectionResponse::missing_parameter("token"))),
+        Some(Err(_)) => Err(Box::new(TokenIntrospectionResponse::invalid_parameter("token"))),
         Some(Ok(token)) => Ok(TokenIntrospectionForm(TokenIntrospectionRequest { token })),
     }
 }

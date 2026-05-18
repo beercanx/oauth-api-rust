@@ -6,7 +6,7 @@ pub mod configuration;
 pub mod middleware;
 
 use crate::value_struct;
-use crate::{diesel_from_sql_for_enum_strings, diesel_from_sql_for_value_structs, diesel_to_sql_for_value_structs, disable_deserialization};
+use crate::{diesel_from_sql_for_enum_strings, diesel_from_sql_for_value_structs, diesel_to_sql_for_value_structs};
 use diesel::sql_types::Text;
 use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize};
@@ -27,8 +27,6 @@ diesel_to_sql_for_value_structs! {
     #[sql_type(Text)]
     ClientId(String);
 }
-
-disable_deserialization!(ClientId);
 
 #[derive(EnumString, Display, Debug, Hash, Eq, PartialEq, Clone)]
 #[strum(serialize_all = "snake_case")]

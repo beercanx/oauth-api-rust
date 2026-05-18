@@ -7,38 +7,37 @@ use anyhow::{Context, Result};
 use diesel::prelude::*;
 use diesel::{AsExpression, FromSqlRow, Queryable, Selectable};
 use diesel_async::RunQueryDsl;
-use serde::Deserialize;
 use std::collections::HashSet;
 
 value_struct! {
-    #[derive(Deserialize, FromSqlRow, AsExpression)]
+    #[derive(FromSqlRow, AsExpression)]
     #[diesel(sql_type = diesel::sql_types::Binary)]
     pub struct RedirectUris(pub HashSet<String>);
 }
 
 value_struct! {
-    #[derive(Deserialize, FromSqlRow, AsExpression)]
+    #[derive(FromSqlRow, AsExpression)]
     #[diesel(sql_type = diesel::sql_types::Binary)]
     pub struct AllowedScopes(pub HashSet<Scope>);
 }
 
 value_struct! {
-    #[derive(Deserialize, FromSqlRow, AsExpression)]
+    #[derive(FromSqlRow, AsExpression)]
     #[diesel(sql_type = diesel::sql_types::Binary)]
     pub struct AllowedActions(pub HashSet<ClientAction>);
 }
 
 value_struct! {
-    #[derive(Deserialize, FromSqlRow, AsExpression)]
+    #[derive(FromSqlRow, AsExpression)]
     #[diesel(sql_type = diesel::sql_types::Binary)]
     pub struct AllowedGrantTypes(pub HashSet<GrantType>);
 }
 
 diesel_from_sql_for_json_fields! {
-    RedirectUris,
-    AllowedScopes,
-    AllowedActions,
-    AllowedGrantTypes,
+    RedirectUris(HashSet<String>);
+    AllowedScopes(HashSet<Scope>);
+    AllowedActions(HashSet<ClientAction>);
+    AllowedGrantTypes(HashSet<GrantType>);
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

@@ -5,7 +5,7 @@ diesel::table! {
         id -> Binary,
         username -> Text,
         client_id -> Text,
-        scopes -> Text,
+        scopes -> Binary,
         issued_at -> Timestamp,
         expires_at -> Timestamp,
         not_before -> Timestamp,

@@ -103,8 +103,9 @@ pub mod test_support {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use crate::scope::Scope;
+    use crate::scope::{Scope, Scopes};
     use assertables::*;
+    use std::collections::HashSet;
     use strum::IntoEnumIterator;
 
     #[tokio::test(flavor = "multi_thread")]
@@ -143,23 +144,7 @@ mod integration_tests {
     async fn should_be_able_to_save_a_token_with_all_scopes_assigned() {
         let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
         let mut token = AccessToken::new();
-        token.scopes = Scope::iter()
-            .map(|scope| scope.to_string())
-            .collect::<Vec<String>>()
-            .join(" ");
+        token.scopes = Scopes(Scope::iter().collect::<HashSet<_>>());
         assert_ok!(under_test.save_token(&token).await);
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn should_not_be_able_to_save_a_token_with_too_many_scopes_assigned() {
-        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
-        let mut token = AccessToken::new();
-        let all_scopes = Scope::iter()
-            .map(|scope| scope.to_string())
-            .collect::<Vec<String>>()
-            .join(" ");
-        token.scopes = all_scopes.clone() + " extra_scope";
-        let error = assert_err!(under_test.save_token(&token).await);
-        assert_eq!(error.root_cause().to_string(), format!("CHECK constraint failed: LENGTH(scopes) <= {}", String::len(&all_scopes)));
     }
 }

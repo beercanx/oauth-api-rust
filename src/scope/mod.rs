@@ -1,6 +1,7 @@
 pub mod parser;
 
-use crate::disable_deserialization;
+use crate::{diesel_from_sql_for_json_fields, diesel_to_sql_for_json_fields, disable_deserialization};
+use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::HashSet;
 use strum_macros::Display;
@@ -16,8 +17,17 @@ pub enum Scope {
     Write,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(FromSqlRow, AsExpression, Default, Debug, Eq, PartialEq, Clone)]
+#[diesel(sql_type = diesel::sql_types::Binary)]
 pub struct Scopes(pub HashSet<Scope>);
+
+diesel_from_sql_for_json_fields! {
+    Scopes(HashSet<Scope>);
+}
+
+diesel_to_sql_for_json_fields! {
+    Scopes(HashSet<Scope>);
+}
 
 impl Serialize for Scopes {
     // Serialize scopes as a space delimited list
