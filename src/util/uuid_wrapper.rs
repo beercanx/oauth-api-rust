@@ -10,7 +10,7 @@ use uuid::Uuid;
 #[serde(transparent)]
 #[derive(diesel::FromSqlRow, diesel::AsExpression)]
 #[diesel(sql_type = Binary)]
-pub struct UuidWrapper(pub Uuid);
+pub struct UuidWrapper(Uuid);
 
 impl UuidWrapper {
     pub fn new(uuid: Uuid) -> Self {

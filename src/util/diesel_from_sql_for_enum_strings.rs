@@ -17,3 +17,16 @@ macro_rules! diesel_from_sql_for_enum_strings {
         )+
     };
 }
+
+#[cfg(test)]
+#[allow(dead_code)]
+mod test {
+
+    #[derive(strum_macros::EnumString, strum_macros::Display)]
+    enum TestEnum {
+        A,
+        B,
+    }
+
+    diesel_from_sql_for_enum_strings!(TestEnum);
+}
