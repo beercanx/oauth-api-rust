@@ -29,6 +29,7 @@ diesel_to_sql_for_value_structs! {
 }
 
 #[derive(EnumString, Display, Debug, Hash, Eq, PartialEq, Clone)]
+#[cfg_attr(test, derive(strum_macros::IntoStaticStr))]
 #[strum(serialize_all = "snake_case")]
 #[derive(FromSqlRow, AsExpression)]
 #[diesel(sql_type = Text)]
@@ -38,6 +39,11 @@ pub enum ClientType {
 }
 
 diesel_from_sql_for_enum_strings! {
+    ClientType
+}
+
+#[cfg(test)]
+crate::diesel_to_sql_for_enum_strings! {
     ClientType
 }
 

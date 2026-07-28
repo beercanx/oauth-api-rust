@@ -7,7 +7,7 @@ use crate::util::diesel_types::AsyncSqlitePool;
 use crate::util::uuid_wrapper::UuidWrapper;
 
 #[derive(Queryable, Selectable)]
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(test, derive(Insertable, Debug))]
 #[diesel(table_name = crate::schema::client_secrets)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct ClientSecret {

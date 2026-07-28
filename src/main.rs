@@ -16,6 +16,7 @@ mod graceful_shutdown;
 mod client;
 mod util;
 mod schema;
+mod database;
 
 use crate::util::diesel_migrations::run_diesel_migrations;
 use crate::util::diesel_pool::create_pool;
