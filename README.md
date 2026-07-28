@@ -8,6 +8,10 @@ An exercise into how to create a HTTP service using Rust, similar to [oauth-api-
 ## Requirements
 * Rust 1.92
   * https://rust-lang.org/tools/install 
+* Diesel CLI 2.3.x
+  * https://diesel.rs/guides/getting-started#installing-diesel-cli
+* Nextest 0.9.x (optional)
+  * https://nexte.st/docs/installation/pre-built-binaries
 * _**(Windows only)**_ Build Tools for Visual Studio with these individual components:
   * https://rust-lang.github.io/rustup/installation/windows-msvc.html
   * _"Build Tools for Visual Studio"_ can be found via https://visualstudio.microsoft.com/downloads
@@ -47,9 +51,9 @@ cargo clippy
 
 ## Testing
 
-The standard Cargo (Rust build tool) approach
+Replaced the vanilla Cargo (Rust build tool) approach with cargo-nextest: https://nexte.st
 ```bash
-cargo test
+cargo nextest run
 ```
 
 ## Running

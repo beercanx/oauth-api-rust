@@ -42,19 +42,24 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest@0.9
+
       - name: Display build versions
         run: |
           cargo --version
           rustc --version
           rustup toolchain list
           cargo clippy --version
+          cargo nextest --version
           jq --version
 
       - name: Build
         run: cargo build
 
       - name: Test
-        run: cargo test
+        run: cargo nextest run --profile ci
 
       # Run Clippy and convert compiler messages to GitHub annotations
       - name: Clippy
