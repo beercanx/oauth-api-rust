@@ -23,6 +23,17 @@ pub fn create_pool(database_url: &str) -> Result<AsyncSqlitePool> {
 }
 
 #[cfg(test)]
+pub mod test_support {
+    use crate::util::diesel_migrations::run_diesel_migrations;
+    use super::*;
+    pub async fn setup_test_pool() -> Result<AsyncSqlitePool> {
+        let pool = create_pool(":memory:")?;
+        run_diesel_migrations(&pool).await?;
+        Ok(pool)
+    }
+}
+
+#[cfg(test)]
 mod integration_tests {
     use super::*;
     use diesel::sql_query;

@@ -40,8 +40,17 @@ diesel_from_sql_for_json_fields! {
     AllowedGrantTypes(HashSet<GrantType>);
 }
 
+#[cfg(test)]
+crate::diesel_to_sql_for_json_fields! {
+    RedirectUris(HashSet<String>);
+    AllowedScopes(HashSet<Scope>);
+    AllowedActions(HashSet<ClientAction>);
+    AllowedGrantTypes(HashSet<GrantType>);
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 #[derive(Queryable, Selectable)]
+#[cfg_attr(test, derive(Insertable))]
 #[diesel(table_name = crate::schema::client_configurations)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct ClientConfiguration {
