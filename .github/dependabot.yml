@@ -5,8 +5,21 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      all-github-actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      security-updates-cargo-dependencies:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      version-updates-cargo-dependencies:
+        applies-to: version-updates
+        patterns:
+          - "*"
