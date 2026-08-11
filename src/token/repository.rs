@@ -9,10 +9,10 @@ use diesel_async::{AsyncConnection, RunQueryDsl};
 
 #[trait_variant::make(Send)]
 pub trait TokenRepository<T>: Sync + Clone {
-    async fn get_token(&self, id: UuidWrapper) -> Result<Option<T>>;
+    async fn get_token(&self, uuid: UuidWrapper) -> Result<Option<T>>;
     async fn save_token(&self, token: &T) -> Result<()>;
     #[allow(dead_code)] // TODO - Remove after we implement token revocation.
-    async fn delete_token(&self, id: UuidWrapper) -> Result<()>;
+    async fn delete_token(&self, uuid: UuidWrapper) -> Result<()>;
 }
 
 #[derive(Clone)]
@@ -28,13 +28,13 @@ impl DieselAccessTokenRepository {
 
 impl TokenRepository<AccessToken> for DieselAccessTokenRepository {
 
-    async fn get_token(&self, token: UuidWrapper) -> Result<Option<AccessToken>> {
+    async fn get_token(&self, uuid: UuidWrapper) -> Result<Option<AccessToken>> {
         let connection = &mut self.pool.get()
             .await
             .with_context(|| "Failed to get connection from pool")?;
 
         let result = access_tokens
-            .filter(id.eq(token))
+            .filter(id.eq(uuid))
             .first::<AccessToken>(connection)
             .await
             .optional()
@@ -57,14 +57,14 @@ impl TokenRepository<AccessToken> for DieselAccessTokenRepository {
         Ok(())
     }
 
-    async fn delete_token(&self, token: UuidWrapper) -> Result<()> {
+    async fn delete_token(&self, uuid: UuidWrapper) -> Result<()> {
         let connection = &mut self.pool.get()
             .await
             .with_context(|| "Failed to get connection from pool")?;
 
         connection.transaction(async |connection| {
             diesel::delete(access_tokens)
-                .filter(id.eq(token))
+                .filter(id.eq(uuid))
                 .execute(connection)
                 .await
                 .and_then(|deleted_rows| {
@@ -83,14 +83,6 @@ impl TokenRepository<AccessToken> for DieselAccessTokenRepository {
 #[cfg(test)]
 pub mod test_support {
     use super::*;
-    use crate::util::diesel_migrations::run_diesel_migrations;
-    impl DieselAccessTokenRepository {
-        pub async fn new_in_memory() -> Result<DieselAccessTokenRepository> {
-            let pool = crate::util::diesel_pool::create_pool(":memory:")?;
-            run_diesel_migrations(&pool).await?;
-            Ok(DieselAccessTokenRepository::new(pool))
-        }
-    }
     impl std::fmt::Debug for DieselAccessTokenRepository {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("DieselSqliteAccessTokenRepository")
@@ -107,44 +99,50 @@ mod integration_tests {
     use assertables::*;
     use std::collections::HashSet;
     use strum::IntoEnumIterator;
+    use crate::util::diesel_pool::test_support::setup_test_pool;
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_be_able_to_save_and_retrieve_a_token() {
-        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
+    async fn should_be_able_to_save_and_retrieve_a_token() -> Result<()> {
+        let under_test = DieselAccessTokenRepository::new(setup_test_pool().await?);
         let token = AccessToken::new();
-        assert_ok!(under_test.save_token(&token).await);
-        assert_eq!(assert_some!(assert_ok!(under_test.get_token(token.id).await)), token);
+        under_test.save_token(&token).await?;
+        assert_eq!(assert_some!(under_test.get_token(token.id).await?), token);
+        Ok(())
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_be_able_to_delete_a_token() {
-        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
+    async fn should_be_able_to_delete_a_token() -> Result<()> {
+        let under_test = DieselAccessTokenRepository::new(setup_test_pool().await?);
         let token = AccessToken::new();
-        assert_ok!(under_test.save_token(&token).await);
-        assert_ok!(under_test.delete_token(token.id).await);
-        assert_none!(assert_ok!(under_test.get_token(token.id).await));
+        under_test.save_token(&token).await?;
+        under_test.delete_token(token.id).await?;
+        assert_none!(under_test.get_token(token.id).await?);
+        Ok(())
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_be_able_to_delete_a_token_when_non_existent() {
-        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
-        assert_ok!(under_test.delete_token(UuidWrapper::random()).await);
+    async fn should_be_able_to_delete_a_token_when_non_existent() -> Result<()> {
+        let under_test = DieselAccessTokenRepository::new(setup_test_pool().await?);
+        under_test.delete_token(UuidWrapper::random()).await?;
+        Ok(())
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_be_able_to_clone_but_share_storage() {
-        let first = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
+    async fn should_be_able_to_clone_but_share_storage() -> Result<()> {
+        let first = DieselAccessTokenRepository::new(setup_test_pool().await?);
         let second = first.clone();
         let token = AccessToken::new();
-        assert_ok!(first.save_token(&token).await);
-        assert_eq!(assert_some!(assert_ok!(second.get_token(token.id).await)), token);
+        first.save_token(&token).await?;
+        assert_eq!(assert_some!(second.get_token(token.id).await?), token);
+        Ok(())
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_be_able_to_save_a_token_with_all_scopes_assigned() {
-        let under_test = assert_ok!(DieselAccessTokenRepository::new_in_memory().await);
+    async fn should_be_able_to_save_a_token_with_all_scopes_assigned() -> Result<()> {
+        let under_test = DieselAccessTokenRepository::new(setup_test_pool().await?);
         let mut token = AccessToken::new();
         token.scopes = Scopes(Scope::iter().collect::<HashSet<_>>());
-        assert_ok!(under_test.save_token(&token).await);
+        under_test.save_token(&token).await?;
+        Ok(())
     }
 }

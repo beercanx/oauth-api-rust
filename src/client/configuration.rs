@@ -102,14 +102,6 @@ impl ClientConfigurationRepository for DieselClientConfigurationRepository {
 #[cfg(test)]
 pub mod test_support {
     use super::*;
-    use crate::util::diesel_migrations::run_diesel_migrations;
-    impl DieselClientConfigurationRepository {
-        pub async fn new_in_memory() -> Result<DieselClientConfigurationRepository> {
-            let pool = crate::util::diesel_pool::create_pool(":memory:")?;
-            run_diesel_migrations(&pool).await?;
-            Ok(DieselClientConfigurationRepository::new(pool))
-        }
-    }
     impl std::fmt::Debug for DieselClientConfigurationRepository {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("DieselClientConfigurationRepository")
@@ -123,12 +115,13 @@ pub mod test_support {
 mod integration_tests {
     use super::*;
     use assertables::*;
+    use crate::util::diesel_pool::test_support::setup_test_pool;
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_be_able_to_retrieve_configuration_by_id() {
-        let under_test = assert_ok!(DieselClientConfigurationRepository::new_in_memory().await);
+    async fn should_be_able_to_retrieve_configuration_by_id() -> Result<()> {
+        let under_test = DieselClientConfigurationRepository::new(setup_test_pool().await?);
         let client_id = ClientId("aardvark".into());
-        let result = assert_some!(assert_ok!(under_test.find_by_id(&client_id).await));
+        let result = assert_some!(under_test.find_by_id(&client_id).await?);
         assert_eq!(result.client_id, client_id);
         assert_eq!(result.client_type, ClientType::Confidential);
         assert_is_empty!(result.redirect_uris.0);
@@ -140,13 +133,14 @@ mod integration_tests {
         assert_len_eq_x!(result.allowed_scopes.0, 3);
         assert_contains!(result.allowed_grant_types.0, &GrantType::Password);
         assert_len_eq_x!(result.allowed_grant_types.0, 1);
+        Ok(())
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_be_able_to_retrieve_configuration_by_client_id() {
-        let under_test = assert_ok!(DieselClientConfigurationRepository::new_in_memory().await);
+    async fn should_be_able_to_retrieve_configuration_by_client_id() -> Result<()> {
+        let under_test = DieselClientConfigurationRepository::new(setup_test_pool().await?);
         let client_id = ClientId("badger".into());
-        let result = assert_some!(assert_ok!(under_test.find_by_id(&client_id).await));
+        let result = assert_some!(under_test.find_by_id(&client_id).await?);
         assert_eq!(result.client_id, client_id);
         assert_eq!(result.client_type, ClientType::Public);
         assert_is_empty!(result.redirect_uris.0);
@@ -154,5 +148,6 @@ mod integration_tests {
         assert_is_empty!(result.allowed_grant_types.0);
         assert_contains!(result.allowed_scopes.0, &Scope::Basic);
         assert_len_eq_x!(result.allowed_scopes.0, 1);
+        Ok(())
     }
 }

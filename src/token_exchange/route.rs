@@ -38,7 +38,7 @@ async fn token_exchange_handler<A: TokenRepository<AccessToken>, C: ClientAuthen
 
     let result = match request {
         TokenExchangeRequest::Password(password_grant_request) => {
-            match handle_password_grant(state, password_grant_request).await { 
+            match handle_password_grant(state, password_grant_request).await {
                 Ok(response) => response,
                 Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR)?,  // TODO - Add error logging
             }
@@ -71,7 +71,8 @@ mod integration_tests {
     use crate::client::configuration::DieselClientConfigurationRepository;
     use crate::client::secret::DieselClientSecretRepository;
     use crate::token::repository::DieselAccessTokenRepository;
-
+    use crate::util::diesel_pool::test_support::setup_test_pool;
+    use crate::util::diesel_types::AsyncSqlitePool;
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/TokenRouteIntegrationTests.kt
 
     const TOKEN_ENDPOINT: &str = "/token";
@@ -79,12 +80,12 @@ mod integration_tests {
     const TEST_CLIENT_USERNAME: &str = "aardvark";
     const TEST_CLIENT_PASSWORD: &str = "badger";
 
-    async fn under_test() -> Router<()> {
+    fn under_test(pool: &AsyncSqlitePool) -> Router<()> {
         route(TokenExchangeState {
-            access_token_repository: assert_ok!(DieselAccessTokenRepository::new_in_memory().await),
+            access_token_repository: DieselAccessTokenRepository::new(pool.clone()),
             client_authenticator: ClientAuthenticationService::new(
-                assert_ok!(DieselClientSecretRepository::new_in_memory().await),
-                assert_ok!(DieselClientConfigurationRepository::new_in_memory().await),
+                DieselClientSecretRepository::new(pool.clone()),
+                DieselClientConfigurationRepository::new(pool.clone()),
             ),
         })
     }
@@ -105,19 +106,20 @@ mod integration_tests {
             ($($name:ident: $method:expr,)*) => {
             $(
                 #[tokio::test(flavor = "multi_thread")]
-                async fn $name() {
-                    let router = under_test().await;
+                async fn $name() -> Result<()> {
+                    let router = under_test(&&setup_test_pool().await?);
 
-                    let request = assert_ok!(Request::builder()
+                    let request = Request::builder()
                         .method($method)
                         .uri(TOKEN_ENDPOINT)
                         .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
-                        .body(Body::empty())
-                    );
+                        .body(Body::empty())?;
 
-                    let response = assert_ok!(router.oneshot(request).await);
+                    let response = router.oneshot(request).await?;
 
                     assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+
+                    Ok(())
                 }
             )*
             }
@@ -135,96 +137,96 @@ mod integration_tests {
         }
 
         #[tokio::test(flavor = "multi_thread")]
-        async fn should_require_client_authentication_on_missing_authorization_header() {
-            let router = under_test().await;
+        async fn should_require_client_authentication_on_missing_authorization_header() -> Result<()> {
+            let router = under_test(&setup_test_pool().await?);
 
-            let request = assert_ok!(
-                Request::builder()
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header("Content-Type", APPLICATION_WWW_FORM_URLENCODED)
-                .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic"))
-            );
+                .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic"))?;
 
-            let response = assert_ok!(router.oneshot(request).await);
+            let response = router.oneshot(request).await?;
 
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+            Ok(())
         }
 
         #[tokio::test(flavor = "multi_thread")]
-        async fn should_require_client_authentication_on_invalid_confidential_client_credentials() {
-            let router = under_test().await;
+        async fn should_require_client_authentication_on_invalid_confidential_client_credentials() -> Result<()> {
+            let router = under_test(&setup_test_pool().await?);
 
-            let request = assert_ok!(
-                Request::builder()
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .header(AUTHORIZATION, basic_auth("invalid", "<REDACTED>"))
-                .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic"))
-            );
+                .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic"))?;
 
-            let response = assert_ok!(router.oneshot(request).await);
+            let response = router.oneshot(request).await?;
 
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+            Ok(())
         }
 
         #[tokio::test(flavor = "multi_thread")]
-        async fn should_require_client_authentication_on_invalid_public_client_credentials() {
-            let router = under_test().await;
+        async fn should_require_client_authentication_on_invalid_public_client_credentials() -> Result<()> {
+            let router = under_test(&setup_test_pool().await?);
 
-            let request = assert_ok!(
-                Request::builder()
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
-                .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic&client_id=invalid"))
-            );
+                .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic&client_id=invalid"))?;
 
-            let response = assert_ok!(router.oneshot(request).await);
+            let response = router.oneshot(request).await?;
 
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+            Ok(())
         }
 
         #[tokio::test(flavor = "multi_thread")]
-        async fn should_require_client_authentication_via_only_one_method() {
-            let router = under_test().await;
+        async fn should_require_client_authentication_via_only_one_method() -> Result<()> {
+            let router = under_test(&setup_test_pool().await?);
 
-            let request = assert_ok!(
-                Request::builder()
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
-                .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic&client_id=badger"))
-            );
+                .body(Body::from("grant_type=password&username=u&password=<REDACTED>&scope=basic&client_id=badger"))?;
 
-            let response = assert_ok!(router.oneshot(request).await);
+            let response = router.oneshot(request).await?;
 
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+            Ok(())
         }
 
         macro_rules! content_type_test {
             ($($name:ident: $value:expr,)*) => {
             $(
                 #[tokio::test(flavor = "multi_thread")]
-                async fn $name() {
-                    let router = under_test().await;
+                async fn $name() -> Result<()> {
+                    let router = under_test(&setup_test_pool().await?);
 
                     let (content_type, body) = $value;
 
-                    let request = assert_ok!(
-                        Request::builder()
+                    let request = Request::builder()
                         .method(Method::POST)
                         .uri(TOKEN_ENDPOINT)
                         .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                         .header(CONTENT_TYPE, format!("application/{content_type}"))
-                        .body(Body::from(body))
-                    );
+                        .body(Body::from(body))?;
 
-                    let response = assert_ok!(router.oneshot(request).await);
+                    let response = router.oneshot(request).await?;
 
                     assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+
+                    Ok(())
                 }
             )*
             }
@@ -240,25 +242,24 @@ mod integration_tests {
         use super::*;
 
         #[tokio::test(flavor = "multi_thread")]
-        async fn should_return_bad_request_for_invalid_token_exchange_requests() {
+        async fn should_return_bad_request_for_invalid_token_exchange_requests() -> Result<()> {
+            let router = under_test(&setup_test_pool().await?);
 
-            let router = under_test().await;
-
-            let request = assert_ok!(
-                Request::builder()
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
-                .body(Body::from("grant_type=aardvark"))
-            );
+                .body(Body::from("grant_type=aardvark"))?;
 
-            let response = assert_ok!(router.oneshot(request).await);
+            let response = router.oneshot(request).await?;
             assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
             let body = extract_json_body(response).await;
             assert_eq!(body["error"], "unsupported_grant_type");
             assert_eq!(body["error_description"], "unsupported: aardvark");
+
+            Ok(())
         }
 
     }
@@ -267,18 +268,17 @@ mod integration_tests {
         use super::*;
 
         #[tokio::test(flavor = "multi_thread")]
-        async fn should_return_ok_for_valid_password_grants() {
-            let router = under_test().await;
+        async fn should_return_ok_for_valid_password_grants() -> Result<()> {
+            let router = under_test(&setup_test_pool().await?);
 
-            let request = assert_ok!(Request::builder()
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
-                .body(Body::from("grant_type=password&username=aardvark&password=badger&scope=basic"))
-            );
+                .body(Body::from("grant_type=password&username=aardvark&password=badger&scope=basic"))?;
 
-            let response = assert_ok!(router.oneshot(request).await);
+            let response = router.oneshot(request).await?;
             assert_eq!(response.status(), StatusCode::OK);
 
             let body = extract_json_body(response).await;
@@ -288,22 +288,23 @@ mod integration_tests {
             assert_some_eq_x!(body.get("expires_in"), 7200);
             assert_some_eq_x!(body.get("scope"), "basic");
             assert_none!(body.get("state"));
+
+            Ok(())
         }
 
         #[tokio::test(flavor = "multi_thread")]
         #[ignore = "authorization code not yet implemented"] // TODO - Re-enable once implemented
-        async fn should_return_ok_for_valid_authorization_code_grants() {
-            let router = under_test().await;
+        async fn should_return_ok_for_valid_authorization_code_grants() -> Result<()> {
+            let router = under_test(&setup_test_pool().await?);
 
-            let request = assert_ok!(Request::builder()
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
-                .body(Body::from(format!("grant_type=authorization_code&code={}&scope=basic&redirect_uri=https%3A%2F%2Fredirect.baconi.co.uk", uuid::Uuid::new_v4())))
-            );
+                .body(Body::from(format!("grant_type=authorization_code&code={}&scope=basic&redirect_uri=https%3A%2F%2Fredirect.baconi.co.uk", uuid::Uuid::new_v4())))?;
 
-            let response = assert_ok!(router.oneshot(request).await);
+            let response = router.oneshot(request).await?;
             assert_eq!(response.status(), StatusCode::OK);
 
             let body = extract_json_body(response).await;
@@ -312,22 +313,23 @@ mod integration_tests {
             assert_some_eq_x!(body.get("token_type"), "bearer");
             assert_some_eq_x!(body.get("expires_in"), 7200);
             assert_some_eq_x!(body.get("scope"), "basic");
+
+            Ok(())
         }
 
         #[tokio::test(flavor = "multi_thread")]
         #[ignore = "refresh grant not yet implemented"] // TODO - Re-enable once implemented
-        async fn should_return_ok_for_valid_refresh_token_grant() {
-            let router = under_test().await;
+        async fn should_return_ok_for_valid_refresh_token_grant() -> Result<()> {
+            let router = under_test(&setup_test_pool().await?);
 
-            let request = assert_ok!(Request::builder()
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
-                .body(Body::from(format!("grant_type=refresh_token&refresh_token={}&scope=basic", uuid::Uuid::new_v4())))
-            );
+                .body(Body::from(format!("grant_type=refresh_token&refresh_token={}&scope=basic", uuid::Uuid::new_v4())))?;
 
-            let response = assert_ok!(router.oneshot(request).await);
+            let response = router.oneshot(request).await?;
             assert_eq!(response.status(), StatusCode::OK);
 
             let body = extract_json_body(response).await;
@@ -336,23 +338,23 @@ mod integration_tests {
             assert_some_eq_x!(body.get("token_type"), "bearer");
             assert_some_eq_x!(body.get("expires_in"), 7200);
             assert_some_eq_x!(body.get("scope"), "basic");
+
+            Ok(())
         }
 
         #[tokio::test(flavor = "multi_thread")]
         #[ignore = "assertion grant not yet implemented"] // TODO - Re-enable once implemented
-        async fn should_return_ok_for_valid_assertion_grant() {
-            let router = under_test().await;
+        async fn should_return_ok_for_valid_assertion_grant() -> Result<()> {
+            let router = under_test(&setup_test_pool().await?);
 
-            let request = assert_ok!(
-                Request::builder()
+            let request = Request::builder()
                 .method(Method::POST)
                 .uri(TOKEN_ENDPOINT)
                 .header(AUTHORIZATION, basic_auth(TEST_CLIENT_USERNAME, TEST_CLIENT_PASSWORD))
                 .header(CONTENT_TYPE, APPLICATION_WWW_FORM_URLENCODED)
-                .body(Body::from(format!("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion={}", uuid::Uuid::new_v4())))
-            );
+                .body(Body::from(format!("grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion={}", uuid::Uuid::new_v4())))?;
 
-            let response = assert_ok!(router.oneshot(request).await);
+            let response = router.oneshot(request).await?;
             assert_eq!(response.status(), StatusCode::OK);
 
             let body = extract_json_body(response).await;
@@ -361,6 +363,8 @@ mod integration_tests {
             assert_some_eq_x!(body.get("token_type"), "bearer");
             assert_some_eq_x!(body.get("expires_in"), 7200);
             assert_some_eq_x!(body.get("scope"), "basic");
+
+            Ok(())
         }
     }
 }
