@@ -6,7 +6,7 @@
 An exercise into how to create a HTTP service using Rust, similar to [oauth-api-go](https://github.com/beercanx/oauth-api-go) and [oauth-api](https://github.com/beercanx/oauth-api).
 
 ## Requirements
-* Rust 1.92
+* Rust 1.97
   * https://rust-lang.org/tools/install 
 * Diesel CLI 2.3.x
   * https://diesel.rs/guides/getting-started#installing-diesel-cli
