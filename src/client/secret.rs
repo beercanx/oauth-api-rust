@@ -50,14 +50,6 @@ impl ClientSecretRepository for DieselClientSecretRepository {
 #[cfg(test)]
 pub mod test_support {
     use super::*;
-    use crate::util::diesel_migrations::run_diesel_migrations;
-    impl DieselClientSecretRepository {
-        pub async fn new_in_memory() -> Result<DieselClientSecretRepository> {
-            let pool = crate::util::diesel_pool::create_pool(":memory:")?;
-            run_diesel_migrations(&pool).await?;
-            Ok(DieselClientSecretRepository::new(pool))
-        }
-    }
     impl std::fmt::Debug for DieselClientSecretRepository {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("DieselClientSecretRepository")
@@ -71,21 +63,24 @@ pub mod test_support {
 mod integration_tests {
     use super::*;
     use assertables::*;
+    use crate::util::diesel_pool::test_support::setup_test_pool;
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_be_able_to_retrieve_all_secrets_for_a_client() {
-        let under_test = assert_ok!(DieselClientSecretRepository::new_in_memory().await);
-        let result = assert_ok!(under_test.find_all_by_client_id("aardvark").await);
+    async fn should_be_able_to_retrieve_all_secrets_for_a_client() -> Result<()> {
+        let under_test = DieselClientSecretRepository::new(setup_test_pool().await?);
+        let result = under_test.find_all_by_client_id("aardvark").await?;
         assert_len_eq_x!(&result, 1);
         assert_eq!(result[0].id, "a9747e2e-34c6-4870-b792-fc7c004baef7".into());
         assert_eq!(result[0].client_id, ClientId("aardvark".into()));
         assert_eq!(result[0].hash, "$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAAA$H95jwDvk045Fb8JUntQP8pIQWj9WA4ETxG4jMUvf7wA");
+        Ok(())
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_return_empty_vector_for_a_client_id_with_no_secrets() {
-        let under_test = assert_ok!(DieselClientSecretRepository::new_in_memory().await);
-        let result = assert_ok!(under_test.find_all_by_client_id("badger").await);
+    async fn should_return_empty_vector_for_a_client_id_with_no_secrets() -> Result<()> {
+        let under_test = DieselClientSecretRepository::new(setup_test_pool().await?);
+        let result = under_test.find_all_by_client_id("badger").await?;
         assert_is_empty!(result);
+        Ok(())
     }
 }
