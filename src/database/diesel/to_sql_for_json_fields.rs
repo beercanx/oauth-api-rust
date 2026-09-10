@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! diesel_to_sql_for_json_fields {
+macro_rules! to_sql_for_json_fields {
     (
         $($struct_name:ident($field_type:ty));+
         $(;)?
@@ -29,7 +29,7 @@ mod test {
         struct SecondToJson(HashSet<i32>);
     }
 
-    diesel_to_sql_for_json_fields! {
+    to_sql_for_json_fields! {
         FirstToJson(HashSet<String>);
         SecondToJson(HashSet<i32>);
     }

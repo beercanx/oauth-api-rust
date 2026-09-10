@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! diesel_from_sql_for_value_structs {
+macro_rules! from_sql_for_value_structs {
     (
         $(
             #[sql_type($sql_type:ty)]
@@ -34,7 +34,7 @@ mod test {
         struct Second(i32);
     }
 
-    diesel_from_sql_for_value_structs! {
+    from_sql_for_value_structs! {
 
         #[sql_type(diesel::sql_types::Text)]
         First(String);

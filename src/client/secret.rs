@@ -3,8 +3,8 @@ use diesel::prelude::*;
 use diesel_async::RunQueryDsl;
 use crate::client::ClientId;
 use crate::schema::client_secrets::dsl;
-use crate::util::diesel_types::AsyncSqlitePool;
-use crate::util::uuid_wrapper::UuidWrapper;
+use crate::database::diesel::types::AsyncSqlitePool;
+use crate::database::diesel::uuid_wrapper::UuidWrapper;
 
 #[derive(Queryable, Selectable)]
 #[cfg_attr(test, derive(Insertable, Debug))]
@@ -63,7 +63,7 @@ pub mod test_support {
 mod integration_tests {
     use super::*;
     use assertables::*;
-    use crate::util::diesel_pool::test_support::setup_test_pool;
+    use crate::database::diesel::pool::test_support::setup_test_pool;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_retrieve_all_secrets_for_a_client() -> Result<()> {

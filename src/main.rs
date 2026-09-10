@@ -18,8 +18,8 @@ mod util;
 mod schema;
 mod database;
 
-use crate::util::diesel_migrations::run_diesel_migrations;
-use crate::util::diesel_pool::create_pool;
+use database::diesel::migrations::run_diesel_migrations;
+use database::diesel::pool::create_pool;
 use anyhow::{Context, Result};
 use axum::{serve, Router};
 use client::authentication::ClientAuthenticationService;

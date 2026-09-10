@@ -5,25 +5,18 @@ pub mod authentication;
 pub mod configuration;
 pub mod middleware;
 
-use crate::value_struct;
-use crate::{diesel_from_sql_for_enum_strings, diesel_from_sql_for_value_structs, diesel_to_sql_for_value_structs};
 use diesel::sql_types::Text;
 use diesel::{AsExpression, FromSqlRow};
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 
-value_struct! {
+crate::value_struct! {
     #[derive(Hash, FromSqlRow, AsExpression)]
     #[diesel(sql_type = diesel::sql_types::Text)]
     pub struct ClientId(String);
 }
 
-diesel_from_sql_for_value_structs! {
-    #[sql_type(Text)]
-    ClientId(String);
-}
-
-diesel_to_sql_for_value_structs! {
+crate::sql_for_value_structs! {
     #[sql_type(Text)]
     ClientId(String);
 }
@@ -38,12 +31,12 @@ pub enum ClientType {
     Public,
 }
 
-diesel_from_sql_for_enum_strings! {
+crate::from_sql_for_enum_strings! {
     ClientType
 }
 
 #[cfg(test)]
-crate::diesel_to_sql_for_enum_strings! {
+crate::to_sql_for_enum_strings! {
     ClientType
 }
 

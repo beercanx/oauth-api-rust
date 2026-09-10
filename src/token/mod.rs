@@ -2,7 +2,7 @@ pub mod repository;
 
 use crate::client::ClientId;
 use crate::scope::Scopes;
-use crate::util::uuid_wrapper::UuidWrapper;
+use crate::database::diesel::uuid_wrapper::UuidWrapper;
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::Serialize;

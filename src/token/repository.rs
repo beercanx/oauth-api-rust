@@ -1,8 +1,8 @@
 use crate::schema::access_tokens::dsl::access_tokens;
 use crate::schema::access_tokens::dsl::id;
 use crate::token::AccessToken;
-use crate::util::diesel_types::AsyncSqlitePool;
-use crate::util::uuid_wrapper::UuidWrapper;
+use crate::database::diesel::types::AsyncSqlitePool;
+use crate::database::diesel::uuid_wrapper::UuidWrapper;
 use anyhow::{Context, Result};
 use diesel::prelude::*;
 use diesel_async::{AsyncConnection, RunQueryDsl};
@@ -99,7 +99,7 @@ mod integration_tests {
     use assertables::*;
     use std::collections::HashSet;
     use strum::IntoEnumIterator;
-    use crate::util::diesel_pool::test_support::setup_test_pool;
+    use crate::database::diesel::pool::test_support::setup_test_pool;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_save_and_retrieve_a_token() -> Result<()> {

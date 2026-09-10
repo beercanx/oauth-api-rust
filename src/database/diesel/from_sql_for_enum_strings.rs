@@ -1,5 +1,5 @@
 #[macro_export]
-macro_rules! diesel_from_sql_for_enum_strings {
+macro_rules! from_sql_for_enum_strings {
     ($($enum_type:ident)+) => {
         $(
             impl<B: diesel::backend::Backend> diesel::deserialize::FromSql<diesel::sql_types::Text, B> for $enum_type
@@ -28,5 +28,5 @@ mod test {
         B,
     }
 
-    diesel_from_sql_for_enum_strings!(TestEnum);
+    from_sql_for_enum_strings!(TestEnum);
 }

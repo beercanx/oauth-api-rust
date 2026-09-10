@@ -71,8 +71,8 @@ mod integration_tests {
     use crate::client::configuration::DieselClientConfigurationRepository;
     use crate::client::secret::DieselClientSecretRepository;
     use crate::token::repository::DieselAccessTokenRepository;
-    use crate::util::diesel_pool::test_support::setup_test_pool;
-    use crate::util::diesel_types::AsyncSqlitePool;
+    use crate::database::diesel::pool::test_support::setup_test_pool;
+    use crate::database::diesel::types::AsyncSqlitePool;
     // See: https://github.com/beercanx/oauth-api/blob/main/api/token/src/test/kotlin/uk/co/baconi/oauth/api/token/TokenRouteIntegrationTests.kt
 
     const TOKEN_ENDPOINT: &str = "/token";
