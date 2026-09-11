@@ -1,6 +1,6 @@
 use crate::scope::Scopes;
 use crate::token::TokenType;
-use crate::util::uuid_wrapper::UuidWrapper;
+use crate::database::diesel::uuid_wrapper::UuidWrapper;
 use serde::Serialize;
 
 #[cfg_attr(test, derive(Debug))]

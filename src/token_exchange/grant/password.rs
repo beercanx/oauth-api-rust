@@ -6,7 +6,7 @@ use crate::token::repository::TokenRepository;
 use crate::token::{AccessToken, TokenType};
 use crate::token_exchange::response::{ErrorType, TokenExchangeResponse};
 use crate::token_exchange::route::TokenExchangeState;
-use crate::util::uuid_wrapper::UuidWrapper;
+use crate::database::diesel::uuid_wrapper::UuidWrapper;
 use anyhow::Result;
 use chrono::{Duration, Utc};
 use serde::Deserialize;

@@ -1,4 +1,4 @@
-use crate::util::diesel_types::{AsyncSqliteConnectionManager, AsyncSqlitePool};
+use crate::database::diesel::types::{AsyncSqliteConnectionManager, AsyncSqlitePool};
 use anyhow::Context;
 use anyhow::Result;
 
@@ -24,7 +24,7 @@ pub fn create_pool(database_url: &str) -> Result<AsyncSqlitePool> {
 
 #[cfg(test)]
 pub mod test_support {
-    use crate::util::diesel_migrations::run_diesel_migrations;
+    use crate::database::diesel::migrations::run_diesel_migrations;
     use super::*;
     pub async fn setup_test_pool() -> Result<AsyncSqlitePool> {
         let pool = create_pool(":memory:")?;
@@ -49,13 +49,13 @@ mod integration_tests {
 
     #[allow(clippy::unwrap_used)]
     #[tokio::test(flavor = "multi_thread")]
-    async fn should_have_foreign_key_support_enabled() {
-        let pool = create_pool(":memory:").unwrap();
-        let mut connection = pool.get().await.unwrap();
+    async fn should_have_foreign_key_support_enabled() -> Result<()> {
+        let pool = create_pool(":memory:")?;
+        let mut connection = pool.get().await?;
         let result = sql_query("PRAGMA foreign_keys;")
             .get_result::<FkPragma>(&mut connection)
-            .await
-            .unwrap();
+            .await?;
         assert_eq!(result.foreign_keys, 1);
+        Ok(())
     }
 }

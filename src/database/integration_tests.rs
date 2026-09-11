@@ -21,9 +21,9 @@ use crate::scope::Scopes;
 use crate::token::repository::DieselAccessTokenRepository;
 use crate::token::repository::TokenRepository;
 use crate::token::AccessToken;
-use crate::util::diesel_pool::test_support::setup_test_pool;
-use crate::util::diesel_types::AsyncSqlitePool;
-use crate::util::uuid_wrapper::UuidWrapper;
+use crate::database::diesel::pool::test_support::setup_test_pool;
+use crate::database::diesel::types::AsyncSqlitePool;
+use crate::database::diesel::uuid_wrapper::UuidWrapper;
 
 mod cascade_delete {
     use super::*;

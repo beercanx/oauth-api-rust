@@ -2,7 +2,6 @@ use diesel::backend::Backend;
 use diesel::deserialize::FromSql;
 use diesel::serialize::{Output, ToSql};
 use diesel::sql_types::Binary;
-use diesel::sqlite::Sqlite;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
@@ -33,17 +32,23 @@ impl From<Uuid> for UuidWrapper {
     }
 }
 
-impl ToSql<Binary, Sqlite> for UuidWrapper {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Sqlite>) -> diesel::serialize::Result {
-        <[u8] as ToSql<Binary, Sqlite>>::to_sql(self.0.as_bytes(), out)
+impl<B: Backend> ToSql<Binary, B> for UuidWrapper
+where
+    [u8]: ToSql<Binary, B>,
+{
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, B>) -> diesel::serialize::Result {
+        <[u8]>::to_sql(self.0.as_bytes(), out)
     }
 }
 
-impl FromSql<Binary, Sqlite> for UuidWrapper {
-    fn from_sql(bytes: <Sqlite as Backend>::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-        let raw = <Vec<u8> as FromSql<Binary, Sqlite>>::from_sql(bytes)?;
-        let uuid = Uuid::from_slice(&raw).map(Self)?;
-        Ok(uuid)
+impl<B: Backend> FromSql<Binary, B> for UuidWrapper
+where
+    Vec<u8>: FromSql<Binary, B>,
+{
+    fn from_sql(raw: <B as Backend>::RawValue<'_>) -> diesel::deserialize::Result<UuidWrapper> {
+        let raw = <Vec<u8>>::from_sql(raw)?;
+        let uuid = Uuid::from_slice(&raw)?;
+        Ok(UuidWrapper(uuid))
     }
 }
 

@@ -1,39 +1,38 @@
 use crate::client::{ClientAction, ClientId, ClientType, GrantType};
 use crate::schema::client_configurations::dsl;
 use crate::scope::Scope;
-use crate::util::diesel_types::AsyncSqlitePool;
-use crate::{diesel_from_sql_for_json_fields, value_struct};
+use crate::database::diesel::types::AsyncSqlitePool;
 use anyhow::{Context, Result};
 use diesel::prelude::*;
 use diesel::{AsExpression, FromSqlRow, Queryable, Selectable};
 use diesel_async::RunQueryDsl;
 use std::collections::HashSet;
 
-value_struct! {
+crate::value_struct! {
     #[derive(FromSqlRow, AsExpression)]
     #[diesel(sql_type = diesel::sql_types::Binary)]
     pub struct RedirectUris(pub HashSet<String>);
 }
 
-value_struct! {
+crate::value_struct! {
     #[derive(FromSqlRow, AsExpression)]
     #[diesel(sql_type = diesel::sql_types::Binary)]
     pub struct AllowedScopes(pub HashSet<Scope>);
 }
 
-value_struct! {
+crate::value_struct! {
     #[derive(FromSqlRow, AsExpression)]
     #[diesel(sql_type = diesel::sql_types::Binary)]
     pub struct AllowedActions(pub HashSet<ClientAction>);
 }
 
-value_struct! {
+crate::value_struct! {
     #[derive(FromSqlRow, AsExpression)]
     #[diesel(sql_type = diesel::sql_types::Binary)]
     pub struct AllowedGrantTypes(pub HashSet<GrantType>);
 }
 
-diesel_from_sql_for_json_fields! {
+crate::from_sql_for_json_fields! {
     RedirectUris(HashSet<String>);
     AllowedScopes(HashSet<Scope>);
     AllowedActions(HashSet<ClientAction>);
@@ -41,7 +40,7 @@ diesel_from_sql_for_json_fields! {
 }
 
 #[cfg(test)]
-crate::diesel_to_sql_for_json_fields! {
+crate::to_sql_for_json_fields! {
     RedirectUris(HashSet<String>);
     AllowedScopes(HashSet<Scope>);
     AllowedActions(HashSet<ClientAction>);
@@ -115,7 +114,7 @@ pub mod test_support {
 mod integration_tests {
     use super::*;
     use assertables::*;
-    use crate::util::diesel_pool::test_support::setup_test_pool;
+    use crate::database::diesel::pool::test_support::setup_test_pool;
 
     #[tokio::test(flavor = "multi_thread")]
     async fn should_be_able_to_retrieve_configuration_by_id() -> Result<()> {
